@@ -9,8 +9,8 @@ from loguru import logger
 
 from excludarr.models import Config
 from excludarr.sonarr import SonarrClient, SonarrError
-from excludarr.providers import ProviderManager
-from excludarr.availability import AvailabilityChecker
+from excludarr.provider_manager import ProviderManager
+from excludarr.simple_cache import TMDBCache
 
 
 class SyncError(Exception):
@@ -50,7 +50,7 @@ class SyncEngine:
         config: Config,
         sonarr_client: Optional[SonarrClient] = None,
         provider_manager: Optional[ProviderManager] = None,
-        availability_checker: Optional[AvailabilityChecker] = None
+        cache: Optional[TMDBCache] = None
     ):
         """Initialize sync engine.
         
@@ -58,21 +58,27 @@ class SyncEngine:
             config: Application configuration
             sonarr_client: Sonarr API client (optional for testing)
             provider_manager: Provider manager (optional for testing)
-            availability_checker: Availability checker (optional for testing)
+            cache: TMDB cache instance (optional for testing)
         """
         self.config = config
         
+        # Initialize cache
+        self.cache = cache or TMDBCache(provider_data_ttl=config.provider_apis.tmdb.cache_ttl)
+        
         # Initialize clients
         self.sonarr_client = sonarr_client or SonarrClient(config.sonarr)
-        self.provider_manager = provider_manager or ProviderManager()
-        self.availability_checker = availability_checker or AvailabilityChecker(
-            self.provider_manager,
-            config.streaming_providers
+        self.provider_manager = provider_manager or ProviderManager(
+            config.provider_apis, 
+            cache=self.cache
         )
         
-        logger.info("Sync engine initialized")
+        # Extract user provider names and countries for filtering
+        self.user_providers = [p.name for p in config.streaming_providers]
+        self.user_countries = list(set(p.country for p in config.streaming_providers))
+        
+        logger.info(f"Sync engine initialized with {len(self.user_providers)} providers in {len(self.user_countries)} countries")
 
-    def run_sync(self) -> List[SyncResult]:
+    async def run_sync(self) -> List[SyncResult]:
         """Run complete sync operation.
         
         Returns:
@@ -97,7 +103,7 @@ class SyncEngine:
             results = []
             for series in eligible_series:
                 try:
-                    result = self._process_series(series)
+                    result = await self._process_series(series)
                     if result:
                         results.append(result)
                 except Exception as e:
@@ -162,7 +168,7 @@ class SyncEngine:
         except SonarrError as e:
             raise SyncError(f"Failed to get series from Sonarr: {e}")
 
-    def _process_series(self, series: Dict[str, Any]) -> Optional[SyncResult]:
+    async def _process_series(self, series: Dict[str, Any]) -> Optional[SyncResult]:
         """Process a single series for sync.
         
         Args:
@@ -178,7 +184,7 @@ class SyncEngine:
         
         try:
             # Check availability on streaming providers
-            availability = self._check_series_availability(series)
+            availability = await self._check_series_availability(series)
             
             # Make sync decision
             decision = self._make_sync_decision(series, availability)
@@ -210,7 +216,7 @@ class SyncEngine:
                 error=str(e)
             )
 
-    def _check_series_availability(self, series: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    async def _check_series_availability(self, series: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         """Check series availability on configured streaming providers.
         
         Args:
@@ -220,7 +226,38 @@ class SyncEngine:
             Dictionary mapping provider names to availability data
         """
         try:
-            return self.availability_checker.check_series_availability(series)
+            # Get IMDb ID from series
+            imdb_id = series.get('imdbId')
+            if not imdb_id:
+                logger.warning(f"No IMDb ID found for series {series.get('title')}")
+                return {provider.name: {"available": False, "seasons": []} 
+                        for provider in self.config.streaming_providers}
+            
+            # Get availability from provider manager
+            availability_data = await self.provider_manager.get_series_availability(
+                imdb_id, 
+                self.user_countries
+            )
+            
+            # Filter by user's providers
+            user_availability = self.provider_manager.filter_by_user_providers(
+                availability_data, 
+                self.user_providers
+            )
+            
+            # Convert to expected format for sync logic
+            result = {}
+            for provider in self.config.streaming_providers:
+                country_available = user_availability.get(provider.country, False)
+                result[provider.name] = {
+                    "available": country_available,
+                    "seasons": [],  # Season-level data not yet implemented
+                    "country": provider.country,
+                    "source": "multi-provider"
+                }
+            
+            return result
+            
         except Exception as e:
             logger.warning(f"Failed to check availability for {series.get('title')}: {e}")
             # Return empty availability data on error
@@ -395,8 +432,8 @@ class SyncEngine:
         """
         results = {
             "sonarr": {"connected": False, "error": None},
-            "providers": {"loaded": False, "count": 0, "error": None},
-            "availability_checker": {"ready": False, "error": None}
+            "provider_manager": {"initialized": False, "providers": 0, "error": None},
+            "cache": {"initialized": False, "error": None}
         }
         
         # Test Sonarr connection
@@ -408,17 +445,18 @@ class SyncEngine:
         
         # Test provider manager
         try:
-            providers = self.provider_manager.get_all_providers()
-            results["providers"]["loaded"] = True
-            results["providers"]["count"] = len(providers)
+            quota_status = self.provider_manager.get_quota_status()
+            results["provider_manager"]["initialized"] = True
+            results["provider_manager"]["providers"] = len(quota_status)
         except Exception as e:
-            results["providers"]["error"] = str(e)
+            results["provider_manager"]["error"] = str(e)
         
-        # Test availability checker
+        # Test cache
         try:
-            # Just check if it initializes properly
-            results["availability_checker"]["ready"] = self.availability_checker is not None
+            # Just check if cache is initialized
+            stats = self.cache.get_statistics()
+            results["cache"]["initialized"] = True
         except Exception as e:
-            results["availability_checker"]["error"] = str(e)
+            results["cache"]["error"] = str(e)
         
         return results

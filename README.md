@@ -468,21 +468,6 @@ excludarr providers validate netflix US
 4. Check the logs for detailed error messages
 5. Verify TMDB API key at [themoviedb.org](https://www.themoviedb.org/settings/api)
 
-## Migration from Jellyseerr
-
-If you're upgrading from a version that used Jellyseerr:
-
-1. **Remove Jellyseerr configuration** from your `excludarr.yml`
-2. **Add TMDB configuration** with your API key
-3. **Update provider APIs section** as shown in the configuration examples
-4. **Run validation** to ensure everything is configured correctly
-
-The new architecture provides:
-- **Zero cost**: No dependency on Jellyseerr instance
-- **Better reliability**: Direct API access without intermediary
-- **Broader coverage**: 180+ countries via TMDB
-- **Extensible design**: Easy to add more free providers
-
 ## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.

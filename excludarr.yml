@@ -37,7 +37,10 @@ provider_apis:
 streaming_providers:
   - name: "amazon-prime"
     country: "DE"
-
+  - name: "zdf-mediathek"
+    country: "DE"
+  - name: "ard-mediathek"
+    country: "DE"
 # Sync operation settings
 sync:
   action: "unmonitor"           # "unmonitor" or "delete"

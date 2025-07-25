@@ -1,5 +1,6 @@
 """Command-line interface for excludarr."""
 
+import asyncio
 import click
 from loguru import logger
 from rich.console import Console
@@ -502,8 +503,12 @@ def sync(ctx, dry_run, action, confirm):
             console.print(f"[red]✗ Sonarr connection failed: {connectivity['sonarr']['error']}[/red]")
             ctx.exit(1)
         
-        if not connectivity["providers"]["loaded"]:
-            console.print(f"[red]✗ Provider loading failed: {connectivity['providers']['error']}[/red]")
+        if not connectivity["provider_manager"]["initialized"]:
+            console.print(f"[red]✗ Provider manager initialization failed: {connectivity['provider_manager']['error']}[/red]")
+            ctx.exit(1)
+        
+        if not connectivity["cache"]["initialized"]:
+            console.print(f"[red]✗ Cache initialization failed: {connectivity['cache']['error']}[/red]")
             ctx.exit(1)
         
         console.print("[green]✓ All connectivity checks passed[/green]")
@@ -512,7 +517,7 @@ def sync(ctx, dry_run, action, confirm):
         console.print("\n[cyan]Starting sync operation...[/cyan]")
         
         with console.status("[blue]Syncing with streaming providers..."):
-            results = sync_engine.run_sync()
+            results = asyncio.run(sync_engine.run_sync())
         
         # Display results
         if not results:

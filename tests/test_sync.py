@@ -34,13 +34,13 @@ class TestSyncEngine:
         # Mock dependencies
         self.mock_sonarr_client = Mock()
         self.mock_provider_manager = Mock()
-        self.mock_availability_checker = Mock()
+        self.mock_cache = Mock()
         
         self.sync_engine = SyncEngine(
             config=self.config,
             sonarr_client=self.mock_sonarr_client,
             provider_manager=self.mock_provider_manager,
-            availability_checker=self.mock_availability_checker
+            cache=self.mock_cache
         )
 
     def test_sync_engine_initialization(self):
@@ -48,7 +48,9 @@ class TestSyncEngine:
         assert self.sync_engine.config == self.config
         assert self.sync_engine.sonarr_client == self.mock_sonarr_client
         assert self.sync_engine.provider_manager == self.mock_provider_manager
-        assert self.sync_engine.availability_checker == self.mock_availability_checker
+        assert self.sync_engine.cache == self.mock_cache
+        assert self.sync_engine.user_providers == ["netflix", "amazon-prime"]
+        assert self.sync_engine.user_countries == ["US", "DE"]
 
     def test_get_eligible_series(self):
         """Test getting series eligible for sync."""
