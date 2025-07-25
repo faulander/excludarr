@@ -423,20 +423,47 @@ class SyncEngine:
                         raise SyncError("Unmonitor operation returned failure")
                     
             elif decision.action == "delete":
-                success = self.sonarr_client.delete_series(decision.series_id, delete_files=False)
-                if success:
-                    message = f"Deleted series '{decision.series_title}' ({decision.reason})"
-                    logger.info(message)
-                    return SyncResult(
-                        series_id=decision.series_id,
-                        series_title=decision.series_title,
-                        success=True,
-                        action_taken="delete",
-                        message=message,
-                        provider=decision.provider
-                    )
+                if decision.scope == "seasons" and decision.affected_seasons:
+                    # Delete specific seasons
+                    success_count = 0
+                    for season_num in decision.affected_seasons:
+                        try:
+                            success = self.sonarr_client.unmonitor_and_delete_season(decision.series_id, season_num)
+                            if success:
+                                success_count += 1
+                                logger.info(f"Deleted season {season_num} of series '{decision.series_title}'")
+                        except Exception as e:
+                            logger.error(f"Failed to delete season {season_num} of series '{decision.series_title}': {e}")
+                    
+                    if success_count > 0:
+                        seasons_str = ", ".join(map(str, decision.affected_seasons[:success_count]))
+                        message = f"Deleted seasons {seasons_str} of series '{decision.series_title}' ({decision.reason})"
+                        return SyncResult(
+                            series_id=decision.series_id,
+                            series_title=decision.series_title,
+                            success=True,
+                            action_taken="delete",
+                            message=message,
+                            provider=decision.provider
+                        )
+                    else:
+                        raise SyncError("Failed to delete any seasons")
                 else:
-                    raise SyncError("Delete operation returned failure")
+                    # Delete entire series
+                    success = self.sonarr_client.delete_series(decision.series_id, delete_files=True)
+                    if success:
+                        message = f"Deleted series '{decision.series_title}' ({decision.reason})"
+                        logger.info(message)
+                        return SyncResult(
+                            series_id=decision.series_id,
+                            series_title=decision.series_title,
+                            success=True,
+                            action_taken="delete",
+                            message=message,
+                            provider=decision.provider
+                        )
+                    else:
+                        raise SyncError("Delete operation returned failure")
             else:
                 raise SyncError(f"Unknown action: {decision.action}")
                 

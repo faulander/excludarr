@@ -26,8 +26,8 @@ provider_apis:
     cache_ttl: 43200          # 12 hours
 
   utelly:
-    enabled: true              # Enable for price data
-    rapidapi_key: 48403d0c95mshc6b099a0d2dbbe7p187905jsn8c5dccbae91f          # Get from rapidapi.com
+    enabled: false              # Enable for price data
+    rapidapi_key: 448403d0c95mshc6b099a0d2dbbe7p187905jsn8c5dccbae91f          # Get from rapidapi.com
     monthly_quota: 1000        # 1000 requests/month free
     cache_ttl: 604800         # 7 days
 

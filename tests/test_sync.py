@@ -269,7 +269,37 @@ class TestSyncEngine:
         assert result.action_taken == "delete"
         assert "deleted series" in result.message.lower()
         
-        self.mock_sonarr_client.delete_series.assert_called_once_with(1, delete_files=False)
+        self.mock_sonarr_client.delete_series.assert_called_once_with(1, delete_files=True)
+
+    def test_execute_sync_decision_delete_seasons(self):
+        """Test executing delete action on specific seasons."""
+        # Set action to delete and dry_run to False
+        self.sync_engine.config.sync.action = "delete"
+        self.sync_engine.config.sync.dry_run = False
+
+        decision = SyncDecision(
+            series_id=1,
+            series_title="Breaking Bad",
+            action="delete",
+            should_process=True,
+            reason="Seasons 1, 2 available on netflix",
+            provider="netflix",
+            affected_seasons=[1, 2],
+            scope="seasons"
+        )
+
+        self.mock_sonarr_client.unmonitor_and_delete_season.return_value = True
+
+        result = self.sync_engine._execute_sync_decision(decision)
+
+        assert result.success is True
+        assert result.action_taken == "delete"
+        assert "Deleted seasons 1, 2" in result.message
+        
+        # Verify both seasons were deleted
+        assert self.mock_sonarr_client.unmonitor_and_delete_season.call_count == 2
+        self.mock_sonarr_client.unmonitor_and_delete_season.assert_any_call(1, 1)
+        self.mock_sonarr_client.unmonitor_and_delete_season.assert_any_call(1, 2)
 
     def test_execute_sync_decision_failure(self):
         """Test handling sync decision execution failure."""

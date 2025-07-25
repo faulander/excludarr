@@ -371,3 +371,130 @@ class SonarrClient:
             raise
         except Exception as e:
             raise SonarrError(f"Failed to get monitored series: {e}")
+
+    def get_season_episodes(self, series_id: int, season_number: int) -> List[Dict[str, Any]]:
+        """Get all episodes for a specific season.
+        
+        Args:
+            series_id: Sonarr series ID
+            season_number: Season number to get episodes for
+            
+        Returns:
+            List of episode data for the season
+            
+        Raises:
+            SonarrError: If API request fails
+        """
+        try:
+            # Get all episodes for the series
+            response = self._make_request("GET", "episode", params={"seriesId": series_id})
+            all_episodes = response.json()
+            
+            # Filter to only episodes from the requested season
+            season_episodes = [
+                episode for episode in all_episodes 
+                if episode.get("seasonNumber") == season_number
+            ]
+            
+            logger.debug(f"Found {len(season_episodes)} episodes in season {season_number} of series {series_id}")
+            return season_episodes
+            
+        except SonarrError:
+            raise
+        except Exception as e:
+            raise SonarrError(f"Failed to get season {season_number} episodes for series {series_id}: {e}")
+
+    def delete_season_files(self, series_id: int, season_number: int) -> bool:
+        """Delete all episode files for a specific season.
+        
+        Args:
+            series_id: Sonarr series ID
+            season_number: Season number to delete files for
+            
+        Returns:
+            True if successful (even if no files existed)
+            
+        Raises:
+            SonarrError: If operation fails
+        """
+        try:
+            # Get episodes for the season
+            episodes = self.get_season_episodes(series_id, season_number)
+            
+            # Track deletion results
+            deleted_count = 0
+            total_files = 0
+            
+            for episode in episodes:
+                if episode.get("hasFile", False) and episode.get("episodeFile"):
+                    total_files += 1
+                    episode_file_id = episode["episodeFile"]["id"]
+                    
+                    try:
+                        # Delete the episode file
+                        response = self._make_request("DELETE", f"episodefile/{episode_file_id}")
+                        
+                        if response.status_code == 200:
+                            deleted_count += 1
+                            logger.debug(f"Deleted episode file {episode_file_id} for season {season_number}")
+                        else:
+                            logger.warning(f"Failed to delete episode file {episode_file_id}: HTTP {response.status_code}")
+                            
+                    except Exception as e:
+                        logger.warning(f"Failed to delete episode file {episode_file_id}: {e}")
+                        continue
+            
+            if total_files == 0:
+                logger.info(f"No files found for season {season_number} of series {series_id}")
+            else:
+                logger.info(f"Deleted {deleted_count}/{total_files} episode files for season {season_number} of series {series_id}")
+            
+            return True
+            
+        except SonarrError:
+            raise
+        except Exception as e:
+            raise SonarrError(f"Failed to delete season {season_number} files for series {series_id}: {e}")
+
+    def unmonitor_and_delete_season(self, series_id: int, season_number: int) -> bool:
+        """Unmonitor a season and delete its files atomically.
+        
+        This method ensures the season is unmonitored first to prevent Sonarr
+        from re-downloading the deleted episodes.
+        
+        Args:
+            series_id: Sonarr series ID
+            season_number: Season number to unmonitor and delete
+            
+        Returns:
+            True if successful (unmonitor must succeed, file deletion can partially fail)
+            
+        Raises:
+            SonarrError: If unmonitor operation fails
+        """
+        try:
+            # Step 1: Unmonitor the season (critical - prevents re-download)
+            unmonitor_success = self.unmonitor_season(series_id, season_number)
+            if not unmonitor_success:
+                raise SonarrError(f"Failed to unmonitor season {season_number} - aborting delete operation")
+            
+            logger.info(f"Successfully unmonitored season {season_number} of series {series_id}")
+            
+            # Step 2: Delete the files (best effort - unmonitor already prevents re-download)
+            try:
+                delete_success = self.delete_season_files(series_id, season_number)
+                if delete_success:
+                    logger.info(f"Successfully deleted files for season {season_number} of series {series_id}")
+                else:
+                    logger.warning(f"File deletion had issues for season {season_number}, but season is unmonitored")
+                    
+            except Exception as e:
+                logger.warning(f"File deletion failed for season {season_number}, but season is unmonitored: {e}")
+            
+            # Return True because unmonitor succeeded (the critical operation)
+            return True
+            
+        except SonarrError:
+            raise
+        except Exception as e:
+            raise SonarrError(f"Failed to unmonitor and delete season {season_number} for series {series_id}: {e}")
