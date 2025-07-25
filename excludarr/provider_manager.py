@@ -1,15 +1,14 @@
 """Multi-provider fallback system for streaming availability data."""
 
-import asyncio
-from typing import Dict, List, Any, Optional, Set
-from datetime import datetime, timedelta
+from typing import Dict, List, Any, Optional
+from datetime import datetime
 
 from loguru import logger
 
 from excludarr.models import ProviderAPIsConfig
-from excludarr.tmdb_client import TMDBClient, TMDBError, TMDBNotFoundException
-from excludarr.streaming_availability_client import StreamingAvailabilityClient, StreamingAvailabilityError, RateLimitError as SARateLimitError
-from excludarr.utelly_client import UtellyClient, UtellyError, RateLimitError as UtellyRateLimitError
+from excludarr.tmdb_client import TMDBClient, TMDBNotFoundException
+from excludarr.streaming_availability_client import StreamingAvailabilityClient, RateLimitError as SARateLimitError
+from excludarr.utelly_client import UtellyClient, RateLimitError as UtellyRateLimitError
 from excludarr.simple_cache import TMDBCache
 
 

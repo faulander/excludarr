@@ -1,4 +1,4 @@
-name: Quick Test
+name: Quick Test and Build
 
 on:
   push:

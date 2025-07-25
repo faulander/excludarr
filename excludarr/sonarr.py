@@ -111,7 +111,7 @@ class SonarrClient:
             if response.status_code >= 400:
                 try:
                     error_msg = response.json().get("message", "Unknown error")
-                except:
+                except Exception:
                     error_msg = f"HTTP {response.status_code}"
                 
                 if response.status_code == 404:

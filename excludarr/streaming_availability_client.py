@@ -1,6 +1,5 @@
 """Streaming Availability API client for enhanced streaming data."""
 
-import asyncio
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 from urllib.parse import urlencode

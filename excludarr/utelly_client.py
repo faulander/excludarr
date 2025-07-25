@@ -1,9 +1,7 @@
 """Utelly API client for pricing and rental data."""
 
-import asyncio
 from datetime import datetime
 from typing import Dict, List, Any, Optional
-from urllib.parse import urlencode
 
 import httpx
 from loguru import logger

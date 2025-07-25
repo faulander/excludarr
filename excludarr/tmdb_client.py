@@ -190,7 +190,7 @@ class TMDBClient:
                             error_message = error_data.get("status_message", f"HTTP {response.status_code}")
                         else:
                             error_message = f"HTTP {response.status_code}"
-                    except:
+                    except Exception:
                         error_message = f"HTTP {response.status_code}"
                     raise TMDBError(f"TMDB API error: {error_message}")
                     

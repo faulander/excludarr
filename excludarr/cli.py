@@ -5,7 +5,7 @@ import click
 from loguru import logger
 from rich.console import Console
 from rich.table import Table
-from rich.progress import Progress, TaskID
+from rich.progress import Progress
 
 from excludarr import __version__
 from excludarr.config import ConfigManager
@@ -635,7 +635,7 @@ def sync(ctx, dry_run, action, confirm, json_output):
             print(json.dumps(output, indent=2))
             return
         
-        console.print(f"\n[green]✓ Sync completed![/green]")
+        console.print("\n[green]✓ Sync completed![/green]")
         console.print(f"Processed: {summary['total_processed']}")
         console.print(f"Successful: {summary['successful']}")
         console.print(f"Failed: {summary['failed']}")

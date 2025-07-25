@@ -3,7 +3,7 @@
 import time
 from datetime import datetime, timezone, timedelta
 from dataclasses import dataclass
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional
 
 from loguru import logger
 
@@ -567,7 +567,7 @@ class SyncEngine:
         # Test cache
         try:
             # Just check if cache is initialized
-            stats = self.cache.get_statistics()
+            self.cache.get_statistics()
             results["cache"]["initialized"] = True
         except Exception as e:
             results["cache"]["error"] = str(e)
