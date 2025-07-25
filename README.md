@@ -353,11 +353,11 @@ excludarr sync --dry-run --json
 
 ### Availability Logic
 
-- **Season-Level Sync**: Analyzes availability at both series and season levels for intelligent decisions
-- **Complete Availability**: Series with all monitored seasons available can be deleted or unmonitored entirely
-- **Partial Availability**: Individual seasons available on streaming are unmonitored (series deletion only for complete availability)
-- **Fallback to Series-Level**: When season data is unavailable, uses series-level availability decisions
-- **Smart Detection**: Handles series with no monitored seasons through series-level fallback logic
+- **Complete Availability Requirement**: Series must be completely available on a streaming provider (all monitored seasons) to be unmonitored or deleted
+- **Season-Level Analysis**: Analyzes availability at both series and season levels for intelligent decisions
+- **All-or-Nothing Approach**: Only series with complete availability across all monitored seasons are processed
+- **Smart Fallback**: When season data is unavailable, uses series-level availability as fallback
+- **Monitored Season Focus**: Only considers monitored seasons when determining complete availability
 - **Recently Added Exclusion**: Automatically excludes recently added series (configurable days)
 - **Intelligent Normalization**: Provider names are automatically normalized for consistent matching
 
@@ -450,24 +450,28 @@ uv run pytest --cov=excludarr --cov-report=html
 
 ### Test Coverage
 
-Current test coverage: **68%** (536 missing out of 1678 total statements)
+Current test coverage: **75%** with comprehensive test suite including 31 CLI integration tests
 
 **Core Modules Coverage:**
-- TMDB Client: **97%** - Primary API integration
+- TMDB Client: **97%** - Primary API integration  
 - Streaming Availability Client: **94%** - Secondary API fallback
 - Utelly Client: **94%** - Tertiary API fallback
 - Simple Cache: **94%** - Caching system
 - Models: **97%** - Configuration validation
+- CLI Interface: **82%** - Comprehensive command testing
 - Provider Manager: **76%** - Multi-provider coordination
 - Sync Engine: **79%** - Core sync logic
-- Sonarr Client: **65%** - Sonarr API integration
 - Providers: **76%** - Provider database management
 - Config: **71%** - Configuration management
+- Sonarr Client: **65%** - Sonarr API integration
 
-**Areas for improvement:**
-- CLI interface: **17%** (mostly integration testing needed)
+**Test Suite Features:**
+- 31 CLI integration tests covering all commands and options
+- Comprehensive mocking for external API calls
+- Error handling and edge case coverage
+- Configuration validation testing
 
-The core functionality has excellent test coverage, with the main API clients (TMDB, Streaming Availability, Utelly) and caching systems achieving >90% coverage. Legacy modules have been removed, significantly improving overall coverage.
+The core functionality has excellent test coverage, with the main API clients (TMDB, Streaming Availability, Utelly) and caching systems achieving >90% coverage. The CLI interface now has comprehensive test coverage with 31 tests covering all command functionality.
 
 ### Contributing
 
