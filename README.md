@@ -450,7 +450,7 @@ uv run pytest --cov=excludarr --cov-report=html
 
 ### Test Coverage
 
-Current test coverage: **75%** with comprehensive test suite including 31 CLI integration tests
+Current test coverage: **86%** with comprehensive test suite including 31 CLI integration tests
 
 **Core Modules Coverage:**
 - TMDB Client: **97%** - Primary API integration  
@@ -459,11 +459,11 @@ Current test coverage: **75%** with comprehensive test suite including 31 CLI in
 - Simple Cache: **94%** - Caching system
 - Models: **97%** - Configuration validation
 - CLI Interface: **82%** - Comprehensive command testing
-- Provider Manager: **76%** - Multi-provider coordination
-- Sync Engine: **79%** - Core sync logic
-- Providers: **76%** - Provider database management
-- Config: **71%** - Configuration management
-- Sonarr Client: **65%** - Sonarr API integration
+- Sync Engine: **86%** - Core sync logic
+- Provider Manager: **79%** - Multi-provider coordination
+- Providers: **99%** - Provider database management
+- Config: **100%** - Configuration management
+- Sonarr Client: **70%** - Sonarr API integration
 
 **Test Suite Features:**
 - 31 CLI integration tests covering all commands and options
