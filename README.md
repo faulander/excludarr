@@ -404,7 +404,7 @@ uv run pytest --cov=excludarr --cov-report=html
 
 ### Test Coverage
 
-Current test coverage: **62%** (811 missing out of 2159 total statements)
+Current test coverage: **68%** (536 missing out of 1678 total statements)
 
 **Core Modules Coverage:**
 - TMDB Client: **97%** - Primary API integration
@@ -420,9 +420,8 @@ Current test coverage: **62%** (811 missing out of 2159 total statements)
 
 **Areas for improvement:**
 - CLI interface: **17%** (mostly integration testing needed)
-- Legacy modules: **0%** (availability.py, availability_old.py - to be removed)
 
-The core functionality has excellent test coverage, with the main API clients (TMDB, Streaming Availability, Utelly) and caching systems achieving >90% coverage.
+The core functionality has excellent test coverage, with the main API clients (TMDB, Streaming Availability, Utelly) and caching systems achieving >90% coverage. Legacy modules have been removed, significantly improving overall coverage.
 
 ### Contributing
 

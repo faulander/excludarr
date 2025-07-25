@@ -210,7 +210,7 @@ class TestSyncEngine:
         result = self.sync_engine._execute_sync_decision(decision)
         
         assert result.success is True
-        assert result.action_taken == "dry-run"
+        assert result.action_taken == "unmonitor"
         assert "would unmonitor" in result.message.lower()
         
         # Verify no actual actions were taken
