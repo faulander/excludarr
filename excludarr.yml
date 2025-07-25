@@ -1,0 +1,41 @@
+# Excludarr Configuration File
+#
+# This file configures excludarr to sync your Sonarr instance with
+# streaming services you subscribe to.
+
+# Sonarr connection settings
+# Get your API key from Sonarr -> Settings -> General -> Security
+# sonarr:
+#   url: "http://localhost:8989"      # Your Sonarr URL
+#   api_key: "your_32_character_api_key"
+
+# Streaming providers you subscribe to
+# Each provider needs a name and 2-letter country code
+# Common providers: netflix, amazon-prime, hulu, disney-plus, hbo-max
+# streaming_providers:
+#   - name: "netflix"
+#     country: "US"
+#   - name: "amazon-prime"
+#     country: "DE"
+
+# Sync operation settings
+# sync:
+#   action: "unmonitor"           # "unmonitor" or "delete"
+#   dry_run: true                 # Preview changes without applying
+#   exclude_recent_days: 7        # Don't process recently added shows
+
+# Configuration:
+sonarr:
+  api_key: abcdefghijklmnopqrstuvwxyz123456
+  url: http://localhost:8989
+streaming_providers:
+- country: US
+  name: netflix
+- country: US
+  name: amazon-prime
+- country: US
+  name: hulu
+sync:
+  action: unmonitor
+  dry_run: true
+  exclude_recent_days: 7
