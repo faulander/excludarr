@@ -6,16 +6,16 @@ A command-line utility that helps you sync your Sonarr instance with streaming s
 
 - **Free Provider APIs**: Real-time streaming availability data from TMDB and other free provider APIs
 - **TMDB Integration**: Primary data source using The Movie Database (TMDB) with completely free access
-- **Extensible Architecture**: Support for multiple free-tier APIs (TMDB, Streaming Availability, Utelly)
-- **Intelligent Rate Limiting**: Respects API limits with exponential backoff (40 req/10s for TMDB)
+- **Multi-Provider Fallback**: Intelligent fallback system (TMDB → Streaming Availability → Utelly)
+- **Enhanced Dry Run**: Detailed preview showing exactly which series/seasons would be affected
+- **Intelligent Rate Limiting**: Respects API limits with exponential backoff and quota tracking
 - **Automatic Sync**: Automatically detects when TV shows are available on your streaming services
 - **Flexible Actions**: Choose to either unmonitor or delete series from Sonarr
 - **Country-Specific**: Supports country-specific streaming providers across 180+ countries
-- **Dry Run Mode**: Preview changes before applying them
 - **Comprehensive Provider Support**: Extensive provider database with smart name mapping
 - **Safety Features**: Excludes recently added series to prevent accidental removal
 - **Rich CLI Interface**: Beautiful terminal output with tables and progress indicators
-- **Robust Error Handling**: Comprehensive error recovery and retry logic
+- **Robust Error Handling**: Comprehensive error recovery and retry logic with graceful fallbacks
 
 ## Installation
 
@@ -132,7 +132,7 @@ uv run excludarr providers list --popular
 ### 5. Run Sync
 
 ```bash
-# Dry run to preview changes
+# Dry run to preview changes (shows detailed action table)
 uv run excludarr sync --dry-run
 
 # Apply changes (unmonitor series)
@@ -317,10 +317,29 @@ excludarr -vvv sync
 
 ### Data Sources Priority
 
-1. **TMDB**: Primary source, completely free, extensive coverage
-2. **Streaming Availability**: Fallback for enhanced data (if enabled)
-3. **Utelly**: Fallback for price information (if enabled)
-4. **Cache**: All data is cached with appropriate TTL to minimize API calls
+1. **TMDB**: Primary source, completely free, extensive coverage with Bearer token support
+2. **Streaming Availability**: Fallback for enhanced data with deep links (100 req/day free)
+3. **Utelly**: Fallback for price information (1000 req/month free)  
+4. **Cache**: Intelligent SQLite-based caching with TTL to minimize API calls
+
+### Enhanced Dry Run
+
+Excludarr now shows detailed dry run output including:
+- **Series names** that would be affected
+- **Action type** (unmonitor/delete)  
+- **Reason** (which provider has the content)
+- **Provider** where content was found
+
+Example dry run output:
+```
+Dry Run Actions:
+┏━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━┓
+┃ Series               ┃ Action          ┃ Reason               ┃ Provider     ┃
+┡━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━┩
+│ Breaking Bad         │ Would Unmonitor │ Available on         │ netflix      │
+│ The Office           │ Would Unmonitor │ Available on         │ amazon-prime │
+└──────────────────────┴─────────────────┴──────────────────────┴──────────────┘
+```
 
 ## Supported Streaming Providers
 

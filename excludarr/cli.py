@@ -554,26 +554,45 @@ def sync(ctx, dry_run, action, confirm):
             
             console.print(provider_table)
         
-        # Show detailed results if verbose
+        # Show actions for dry-run or verbose mode
         verbose_level = ctx.obj.get('verbose', 0)
-        if verbose_level > 0:
-            console.print("\n[cyan]Detailed Results:[/cyan]")
+        show_details = verbose_level > 0 or config.sync.dry_run
+        
+        # Filter results that have actions to show
+        actionable_results = [r for r in results if r.action_taken != "none"]
+        
+        if show_details and actionable_results:
+            title = "Dry Run Actions" if config.sync.dry_run else "Detailed Results"
+            console.print(f"\n[cyan]{title}:[/cyan]")
             result_table = Table()
             result_table.add_column("Series", style="cyan")
             result_table.add_column("Action", style="yellow")
-            result_table.add_column("Result", style="green")
+            result_table.add_column("Reason", style="green")
             result_table.add_column("Provider", style="blue")
             
-            for result in results:
-                status = "✓" if result.success else "✗"
+            for result in actionable_results:
+                # Clean up the message for better display
+                reason = result.message
+                if "Would " in reason and "(" in reason:
+                    # Extract reason from "Would unmonitor series 'Title' (reason)"
+                    reason = reason.split("(", 1)[-1].rstrip(")")
+                elif " series '" in reason and "(" in reason:
+                    # Extract reason from "Unmonitored series 'Title' (reason)"
+                    reason = reason.split("(", 1)[-1].rstrip(")")
+                
+                action_display = "Would " + result.action_taken.title() if config.sync.dry_run else result.action_taken.title()
+                
                 result_table.add_row(
                     result.series_title,
-                    result.action_taken,
-                    f"{status} {result.message}",
+                    action_display,
+                    reason,
                     result.provider or "N/A"
                 )
             
             console.print(result_table)
+        elif show_details and not actionable_results:
+            if config.sync.dry_run:
+                console.print("\n[green]No actions would be taken - all series are either not available on streaming services or were recently added.[/green]")
         
         # Show errors if any
         failed_results = [r for r in results if not r.success]

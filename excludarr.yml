@@ -20,14 +20,14 @@ provider_apis:
     cache_ttl: 86400            # 24 hours
 
   streaming_availability:
-    enabled: false              # Enable for enhanced fallback
-    rapidapi_key: null          # Get from rapidapi.com
+    enabled: true              # Enable for enhanced fallback
+    rapidapi_key: 8403d0c95mshc6b099a0d2dbbe7p187905jsn8c5dccbae91f          # Get from rapidapi.com
     daily_quota: 100           # 100 requests/day free
     cache_ttl: 43200          # 12 hours
 
   utelly:
-    enabled: false              # Enable for price data
-    rapidapi_key: null          # Get from rapidapi.com
+    enabled: true              # Enable for price data
+    rapidapi_key: 48403d0c95mshc6b099a0d2dbbe7p187905jsn8c5dccbae91f          # Get from rapidapi.com
     monthly_quota: 1000        # 1000 requests/month free
     cache_ttl: 604800         # 7 days
 

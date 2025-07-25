@@ -340,7 +340,7 @@ class SyncEngine:
                 series_id=decision.series_id,
                 series_title=decision.series_title,
                 success=True,
-                action_taken="dry-run",
+                action_taken=decision.action,
                 message=message,
                 provider=decision.provider
             )
