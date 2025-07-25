@@ -26,15 +26,11 @@
 
 # Configuration:
 sonarr:
-  api_key: abcdefghijklmnopqrstuvwxyz123456
-  url: http://localhost:8989
+  api_key: c30957f85cfd4ba1968076c7e8375d52
+  url: http://192.168.42.167:8989
 streaming_providers:
-- country: US
-  name: netflix
-- country: US
+- country: DE
   name: amazon-prime
-- country: US
-  name: hulu
 sync:
   action: unmonitor
   dry_run: true
