@@ -3,7 +3,7 @@
 import json
 import tempfile
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, mock_open
 
 import pytest
 
@@ -224,3 +224,109 @@ class TestProviderDataStructure:
                 parts = provider_name.split("-")
                 for part in parts:
                     assert len(part) > 0
+
+
+class TestProviderManagerErrors:
+    """Test error conditions in provider manager."""
+    
+    @patch('excludarr.providers.Path.exists')
+    def test_provider_file_not_found(self, mock_exists):
+        """Test error when providers file doesn't exist."""
+        mock_exists.return_value = False
+        
+        with pytest.raises(ProviderError, match="Providers file not found"):
+            ProviderManager()
+    
+    @patch('builtins.open', mock_open(read_data='invalid json'))
+    @patch('excludarr.providers.Path.exists')
+    def test_invalid_json_error(self, mock_exists):
+        """Test error when providers file contains invalid JSON."""
+        mock_exists.return_value = True
+        
+        with pytest.raises(ProviderError, match="Invalid JSON in providers file"):
+            ProviderManager()
+    
+    @patch('builtins.open', side_effect=IOError("Permission denied"))
+    @patch('excludarr.providers.Path.exists')
+    def test_file_read_error(self, mock_exists, mock_open):
+        """Test error when providers file cannot be read."""
+        mock_exists.return_value = True
+        
+        with pytest.raises(ProviderError, match="Failed to load providers"):
+            ProviderManager()
+
+
+class TestProviderManagerAdditionalMethods:
+    """Test additional methods not covered in main test class."""
+    
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.manager = ProviderManager()
+    
+    def test_get_popular_providers(self):
+        """Test getting popular providers by country count."""
+        popular = self.manager.get_popular_providers(limit=5)
+        
+        assert isinstance(popular, list)
+        assert len(popular) <= 5
+        assert len(popular) > 0
+        
+        # Check structure
+        for provider in popular:
+            assert "name" in provider
+            assert "display_name" in provider
+            assert "country_count" in provider
+            assert "countries" in provider
+            assert isinstance(provider["country_count"], int)
+            assert provider["country_count"] > 0
+        
+        # Check sorted by country count (descending)
+        if len(popular) > 1:
+            for i in range(len(popular) - 1):
+                assert popular[i]["country_count"] >= popular[i + 1]["country_count"]
+    
+    def test_get_popular_providers_default_limit(self):
+        """Test getting popular providers with default limit."""
+        popular = self.manager.get_popular_providers()
+        assert len(popular) <= 15  # Default limit
+    
+    def test_get_regional_providers(self):
+        """Test getting region-specific providers."""
+        # Test known regions
+        us_providers = self.manager.get_regional_providers("US")
+        assert isinstance(us_providers, list)
+        
+        eu_providers = self.manager.get_regional_providers("EU")
+        assert isinstance(eu_providers, list)
+        
+        asia_providers = self.manager.get_regional_providers("ASIA")
+        assert isinstance(asia_providers, list)
+        
+        oceania_providers = self.manager.get_regional_providers("OCEANIA")
+        assert isinstance(oceania_providers, list)
+        
+        americas_providers = self.manager.get_regional_providers("AMERICAS")
+        assert isinstance(americas_providers, list)
+    
+    def test_get_regional_providers_invalid_region(self):
+        """Test getting regional providers for invalid region."""
+        providers = self.manager.get_regional_providers("INVALID")
+        assert providers == []
+    
+    def test_get_regional_providers_case_insensitive(self):
+        """Test that regional provider lookup is case insensitive."""
+        providers_upper = self.manager.get_regional_providers("US")
+        providers_lower = self.manager.get_regional_providers("us")
+        assert providers_upper == providers_lower
+    
+    def test_reload_providers(self):
+        """Test reloading provider data."""
+        # Get initial data
+        initial_providers = self.manager.get_all_providers()
+        
+        # Reload should work without error
+        self.manager.reload_providers()
+        
+        # Data should be the same (in real use, file might have changed)
+        reloaded_providers = self.manager.get_all_providers()
+        assert len(reloaded_providers) == len(initial_providers)

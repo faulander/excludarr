@@ -2,6 +2,7 @@
 
 import pytest
 from unittest.mock import Mock, patch, MagicMock
+import asyncio
 
 from excludarr.sync import SyncEngine, SyncResult, SyncDecision, SyncError
 from excludarr.models import Config, SonarrConfig, StreamingProvider, SyncConfig, TMDBConfig, ProviderAPIsConfig
@@ -463,3 +464,208 @@ class TestSyncResult:
         assert result.action_taken == "unmonitor"
         assert result.message == "Successfully unmonitored"
         assert result.provider == "netflix"
+
+
+class TestSyncEngineErrorHandling:
+    """Test error handling scenarios in sync engine."""
+    
+    def setup_method(self):
+        """Set up test fixtures."""
+        self.config = Config(
+            sonarr=SonarrConfig(
+                url="http://localhost:8989",
+                api_key="a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+            ),
+            provider_apis=ProviderAPIsConfig(
+                tmdb=TMDBConfig(api_key="test_tmdb_key")
+            ),
+            streaming_providers=[
+                StreamingProvider(name="netflix", country="US")
+            ],
+            sync=SyncConfig(
+                action="unmonitor",
+                dry_run=True,
+                exclude_recent_days=7
+            )
+        )
+        
+        self.mock_sonarr_client = Mock()
+        self.mock_provider_manager = Mock()
+        self.mock_cache = Mock()
+        
+        self.sync_engine = SyncEngine(
+            config=self.config,
+            sonarr_client=self.mock_sonarr_client,
+            provider_manager=self.mock_provider_manager,
+            cache=self.mock_cache
+        )
+
+    async def test_run_sync_with_progress_callback(self):
+        """Test run_sync with progress callback."""
+        # Mock series data
+        mock_series = [
+            {
+                "id": 1,
+                "title": "Breaking Bad",
+                "monitored": True,
+                "added": "2024-01-01T00:00:00Z",
+                "seasons": [{"seasonNumber": 1, "monitored": True}],
+                "imdbId": "tt0903747"
+            }
+        ]
+        
+        self.mock_sonarr_client.get_monitored_series.return_value = mock_series
+        
+        # Mock the _process_series method to return a result
+        mock_result = SyncResult(
+            series_id=1,
+            series_title="Breaking Bad",
+            success=True,
+            action_taken="unmonitor",
+            message="Would unmonitor series",
+            provider="netflix"
+        )
+        
+        with patch.object(self.sync_engine, '_process_series', return_value=mock_result):
+            # Mock progress callback
+            progress_callback = Mock()
+            
+            results = await self.sync_engine.run_sync(progress_callback=progress_callback)
+            
+            # Verify progress callback was called (index starts at 1, not 0)
+            progress_callback.assert_called_with(1, 1, "Breaking Bad")
+            assert len(results) == 1
+
+    async def test_run_sync_with_exception_in_process_series(self):
+        """Test run_sync when _process_series raises an exception."""
+        # Mock series data
+        mock_series = [
+            {
+                "id": 1,
+                "title": "Breaking Bad",
+                "monitored": True,
+                "added": "2024-01-01T00:00:00Z",
+                "seasons": [{"seasonNumber": 1, "monitored": True}],
+                "imdbId": "tt0903747"
+            }
+        ]
+        
+        self.mock_sonarr_client.get_monitored_series.return_value = mock_series
+        
+        # Mock _process_series to raise an exception
+        with patch.object(self.sync_engine, '_process_series', side_effect=Exception("Processing failed")):
+            results = await self.sync_engine.run_sync()
+            
+            # Should return a failed result
+            assert len(results) == 1
+            assert results[0].success is False
+            assert "Processing failed" in results[0].message
+
+    async def test_run_sync_with_sync_engine_exception(self):
+        """Test run_sync when a SyncError is raised."""
+        # Mock get_monitored_series to raise an exception
+        self.mock_sonarr_client.get_monitored_series.side_effect = Exception("Sonarr connection failed")
+        
+        with pytest.raises(SyncError, match="Sync operation failed"):
+            await self.sync_engine.run_sync()
+
+    def test_test_connectivity_all_successful(self):
+        """Test connectivity when all services are working."""
+        # Mock successful connections
+        self.mock_sonarr_client.test_connection.return_value = None
+        self.mock_provider_manager.get_quota_status.return_value = {"tmdb": {"available": True}}
+        self.mock_cache.get_statistics.return_value = {"total_entries": 100}
+        
+        results = self.sync_engine.test_connectivity()
+        
+        assert results["sonarr"]["connected"] is True
+        assert results["sonarr"]["error"] is None
+        assert results["provider_manager"]["initialized"] is True
+        assert results["provider_manager"]["providers"] == 1
+        assert results["provider_manager"]["error"] is None
+        assert results["cache"]["initialized"] is True
+        assert results["cache"]["error"] is None
+
+    def test_test_connectivity_sonarr_failure(self):
+        """Test connectivity when Sonarr connection fails."""
+        # Mock failed Sonarr connection
+        self.mock_sonarr_client.test_connection.side_effect = Exception("Connection refused")
+        self.mock_provider_manager.get_quota_status.return_value = {"tmdb": {"available": True}}
+        self.mock_cache.get_statistics.return_value = {"total_entries": 100}
+        
+        results = self.sync_engine.test_connectivity()
+        
+        assert results["sonarr"]["connected"] is False
+        assert results["sonarr"]["error"] == "Connection refused"
+        assert results["provider_manager"]["initialized"] is True
+        assert results["cache"]["initialized"] is True
+
+    def test_test_connectivity_provider_manager_failure(self):
+        """Test connectivity when provider manager fails."""
+        # Mock successful Sonarr but failed provider manager
+        self.mock_sonarr_client.test_connection.return_value = None
+        self.mock_provider_manager.get_quota_status.side_effect = Exception("API key invalid")
+        self.mock_cache.get_statistics.return_value = {"total_entries": 100}
+        
+        results = self.sync_engine.test_connectivity()
+        
+        assert results["sonarr"]["connected"] is True
+        assert results["provider_manager"]["initialized"] is False
+        assert results["provider_manager"]["error"] == "API key invalid"
+        assert results["cache"]["initialized"] is True
+
+    def test_test_connectivity_cache_failure(self):
+        """Test connectivity when cache fails."""
+        # Mock successful connections but failed cache
+        self.mock_sonarr_client.test_connection.return_value = None
+        self.mock_provider_manager.get_quota_status.return_value = {"tmdb": {"available": True}}
+        self.mock_cache.get_statistics.side_effect = Exception("Database locked")
+        
+        results = self.sync_engine.test_connectivity()
+        
+        assert results["sonarr"]["connected"] is True
+        assert results["provider_manager"]["initialized"] is True
+        assert results["cache"]["initialized"] is False
+        assert results["cache"]["error"] == "Database locked"
+
+    def test_get_eligible_series_sonarr_error(self):
+        """Test _get_eligible_series when Sonarr call fails."""
+        # Mock Sonarr to raise an exception
+        self.mock_sonarr_client.get_monitored_series.side_effect = Exception("Sonarr API error")
+        
+        # The method doesn't actually raise SyncError for this case - it just raises the exception
+        with pytest.raises(Exception, match="Sonarr API error"):
+            self.sync_engine._get_eligible_series()
+
+    async def test_process_series_missing_imdb_id(self):
+        """Test _process_series when series lacks IMDb ID."""
+        series = {
+            "id": 1,
+            "title": "Test Series",
+            "seasons": [{"seasonNumber": 1, "monitored": True}]
+            # Missing imdbId
+        }
+        
+        result = await self.sync_engine._process_series(series)
+        
+        # Series without IMDb ID just get no availability data, but still return success
+        assert result.success is True
+        assert result.action_taken == "none" 
+        assert "Not available on any configured streaming providers" in result.message
+
+    async def test_process_series_availability_check_error(self):
+        """Test _process_series when availability check fails."""
+        series = {
+            "id": 1,
+            "title": "Test Series",
+            "imdbId": "tt1234567",
+            "seasons": [{"seasonNumber": 1, "monitored": True}]
+        }
+        
+        # Mock availability check to raise an exception
+        with patch.object(self.sync_engine, '_check_series_availability', side_effect=Exception("API error")):
+            result = await self.sync_engine._process_series(series)
+            
+            assert result.success is False
+            assert "API error" in result.message
+            assert result.action_taken == "none"

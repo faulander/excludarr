@@ -332,3 +332,178 @@ class TestProviderManager:
                 }
             }
             assert manager._should_use_utelly(result, ["DE"]) is False
+
+
+class TestProviderManagerErrorHandling:
+    """Test error handling in provider manager."""
+    
+    def test_initialization_with_tmdb_failure(self):
+        """Test initialization when TMDB client fails to initialize."""
+        config = ProviderAPIsConfig(
+            tmdb=TMDBConfig(api_key="invalid_key", enabled=True),
+            streaming_availability=StreamingAvailabilityConfig(enabled=False),
+            utelly=UtellyConfig(enabled=False)
+        )
+        
+        with patch('excludarr.provider_manager.TMDBClient', side_effect=Exception("TMDB init failed")):
+            # Should fail since no providers will be available
+            with pytest.raises(ValueError, match="No provider APIs are enabled"):
+                ProviderManager(config)
+    
+    def test_initialization_with_streaming_availability_failure(self):
+        """Test initialization when Streaming Availability client fails."""
+        config = ProviderAPIsConfig(
+            tmdb=TMDBConfig(api_key="test_key", enabled=True),
+            streaming_availability=StreamingAvailabilityConfig(
+                enabled=True,
+                rapidapi_key="invalid_key"
+            ),
+            utelly=UtellyConfig(enabled=False)
+        )
+        
+        with patch('excludarr.provider_manager.TMDBClient'):
+            with patch('excludarr.provider_manager.StreamingAvailabilityClient', side_effect=Exception("SA init failed")):
+                manager = ProviderManager(config)
+                assert 'tmdb' in manager.providers
+                assert 'streaming_availability' not in manager.providers
+    
+    def test_initialization_with_utelly_failure(self):
+        """Test initialization when Utelly client fails."""
+        config = ProviderAPIsConfig(
+            tmdb=TMDBConfig(api_key="test_key", enabled=True),
+            streaming_availability=StreamingAvailabilityConfig(enabled=False),
+            utelly=UtellyConfig(
+                enabled=True,
+                rapidapi_key="invalid_key"
+            )
+        )
+        
+        with patch('excludarr.provider_manager.TMDBClient'):
+            with patch('excludarr.provider_manager.UtellyClient', side_effect=Exception("Utelly init failed")):
+                manager = ProviderManager(config)
+                assert 'tmdb' in manager.providers
+                assert 'utelly' not in manager.providers
+
+    async def test_get_tmdb_data_no_tmdb_provider(self):
+        """Test _get_tmdb_data when TMDB provider is not available."""
+        config = ProviderAPIsConfig(
+            tmdb=TMDBConfig(api_key="test_key", enabled=False),
+            streaming_availability=StreamingAvailabilityConfig(enabled=False),
+            utelly=UtellyConfig(enabled=False)
+        )
+        
+        # This should raise error since no providers are enabled
+        with pytest.raises(ValueError, match="No provider APIs are enabled"):
+            ProviderManager(config)
+
+    async def test_get_streaming_availability_data_no_provider(self):
+        """Test _get_streaming_availability_data when SA provider is not available."""
+        config = ProviderAPIsConfig(
+            tmdb=TMDBConfig(api_key="test_key", enabled=True),
+            streaming_availability=StreamingAvailabilityConfig(enabled=False),
+            utelly=UtellyConfig(enabled=False)
+        )
+        
+        with patch('excludarr.provider_manager.TMDBClient'):
+            manager = ProviderManager(config)
+            
+            # Should raise KeyError when provider not available
+            with pytest.raises(KeyError):
+                await manager._get_streaming_availability_data("tt1234567", ["US"])
+
+    async def test_get_utelly_data_no_provider(self):
+        """Test _get_utelly_data when Utelly provider is not available."""
+        config = ProviderAPIsConfig(
+            tmdb=TMDBConfig(api_key="test_key", enabled=True),
+            streaming_availability=StreamingAvailabilityConfig(enabled=False),
+            utelly=UtellyConfig(enabled=False)
+        )
+        
+        with patch('excludarr.provider_manager.TMDBClient'):
+            manager = ProviderManager(config)
+            
+            # Should raise KeyError when provider not available
+            with pytest.raises(KeyError):
+                await manager._get_utelly_data("tt1234567", ["US"])
+
+    async def test_get_series_availability_with_tmdb_exception(self):
+        """Test get_series_availability when TMDB raises an exception."""
+        config = ProviderAPIsConfig(
+            tmdb=TMDBConfig(api_key="test_key", enabled=True),
+            streaming_availability=StreamingAvailabilityConfig(enabled=False),
+            utelly=UtellyConfig(enabled=False)
+        )
+        
+        with patch('excludarr.provider_manager.TMDBClient') as mock_tmdb_class:
+            manager = ProviderManager(config)
+            
+            # Mock TMDB to raise an exception
+            mock_tmdb = mock_tmdb_class.return_value
+            mock_tmdb.get_streaming_availability = AsyncMock(side_effect=Exception("TMDB API error"))
+            
+            with patch.object(manager, '_get_from_cache', return_value=None):
+                with patch.object(manager, '_save_to_cache'):
+                    result = await manager.get_series_availability("tt1234567", ["US"])
+                    
+                    # Should return empty result structure when all providers fail
+                    assert "countries" in result
+                    assert "metadata" in result
+                    assert result["metadata"]["sources"] == []
+
+    async def test_merge_streaming_availability_data_edge_cases(self):
+        """Test _merge_streaming_availability_data with edge cases."""
+        config = ProviderAPIsConfig(
+            tmdb=TMDBConfig(api_key="test_key", enabled=True),
+            streaming_availability=StreamingAvailabilityConfig(enabled=True, rapidapi_key="test_key"),
+            utelly=UtellyConfig(enabled=False)
+        )
+        
+        with patch('excludarr.provider_manager.TMDBClient'):
+            with patch('excludarr.provider_manager.StreamingAvailabilityClient'):
+                manager = ProviderManager(config)
+                
+                # Test with empty SA data
+                result = {"countries": {"US": {}}}
+                sa_data = {}
+                manager._merge_streaming_availability_data(result, sa_data, ["US"])
+                
+                # Should not crash and result should be unchanged
+                assert result["countries"]["US"] == {}
+
+    async def test_merge_utelly_data_edge_cases(self):
+        """Test _merge_utelly_data with edge cases."""
+        config = ProviderAPIsConfig(
+            tmdb=TMDBConfig(api_key="test_key", enabled=True),
+            streaming_availability=StreamingAvailabilityConfig(enabled=False),
+            utelly=UtellyConfig(enabled=True, rapidapi_key="test_key")
+        )
+        
+        with patch('excludarr.provider_manager.TMDBClient'):
+            with patch('excludarr.provider_manager.UtellyClient'):
+                manager = ProviderManager(config)
+                
+                # Test with empty Utelly data
+                result = {"countries": {"US": {}}}
+                utelly_data = {}
+                manager._merge_utelly_data(result, utelly_data, ["US"])
+                
+                # Should not crash and result should be unchanged
+                assert result["countries"]["US"] == {}
+
+    def test_normalize_provider_name_edge_cases(self):
+        """Test normalize_provider_name with edge cases."""
+        config = ProviderAPIsConfig(
+            tmdb=TMDBConfig(api_key="test_key", enabled=True),
+            streaming_availability=StreamingAvailabilityConfig(enabled=False),
+            utelly=UtellyConfig(enabled=False)
+        )
+        
+        with patch('excludarr.provider_manager.TMDBClient'):
+            manager = ProviderManager(config)
+            
+            # Test edge cases (method is private, so use _ prefix)
+            assert manager._normalize_provider_name("") == ""
+            assert manager._normalize_provider_name("Netflix") == "netflix"
+            assert manager._normalize_provider_name("AMAZON PRIME VIDEO") == "amazon-prime"
+            assert manager._normalize_provider_name("Disney+") == "disney-plus"
+            assert manager._normalize_provider_name("HBO Max") == "hbo-max"
