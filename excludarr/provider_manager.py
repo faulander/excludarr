@@ -259,6 +259,17 @@ class ProviderManager:
     
     def _should_use_streaming_availability(self, result: Dict, countries: List[str]) -> bool:
         """Determine if Streaming Availability API should be used."""
+        # Check quota first - no point if we're out of requests
+        sa_client = self.providers.get('streaming_availability')
+        if sa_client:
+            try:
+                if hasattr(sa_client, 'remaining_quota') and sa_client.remaining_quota <= 0:
+                    logger.debug("Streaming Availability quota exhausted, skipping")
+                    return False
+            except (TypeError, AttributeError):
+                # Ignore quota check errors (e.g., in test mocks)
+                pass
+        
         # Only use if TMDB has no data at all for the requested countries
         for country in countries:
             if country not in result["countries"] or not result["countries"][country]:
@@ -269,12 +280,24 @@ class ProviderManager:
     
     def _should_use_utelly(self, result: Dict, countries: List[str]) -> bool:
         """Determine if Utelly API should be used."""
+        # Check quota first - no point if we're out of requests
+        utelly_client = self.providers.get('utelly')
+        if utelly_client:
+            try:
+                if hasattr(utelly_client, 'remaining_quota') and utelly_client.remaining_quota <= 0:
+                    logger.debug("Utelly monthly quota exhausted, skipping")
+                    return False
+            except (TypeError, AttributeError):
+                # Ignore quota check errors (e.g., in test mocks)
+                pass
+        
         # Only use if TMDB has absolutely no data and we need pricing information
         # Since we only care about streaming (not rental/purchase), rarely needed
         for country in countries:
             if country not in result["countries"] or not result["countries"][country]:
                 # Only if Streaming Availability also failed
-                return "streaming_availability" not in result["metadata"]["sources"]
+                metadata_sources = result.get("metadata", {}).get("sources", [])
+                return "streaming_availability" not in metadata_sources
         
         # Don't use for pricing data - we only care about streaming availability
         return False

@@ -117,45 +117,53 @@ class TestProviderManager:
     
     @pytest.mark.asyncio
     async def test_get_series_availability_with_fallback(self):
-        """Test getting availability with fallback to secondary provider."""
+        """Test that fallback APIs are used conservatively only when TMDB has no data."""
         with patch('excludarr.provider_manager.TMDBClient') as mock_tmdb_class:
             with patch('excludarr.provider_manager.StreamingAvailabilityClient') as mock_sa_class:
                 with patch('excludarr.provider_manager.UtellyClient'):
-                    # Create manager
-                    manager = ProviderManager(self.config)
-                    
-                    # Mock TMDB client
-                    mock_tmdb = mock_tmdb_class.return_value
-                    mock_tmdb.find_series_by_imdb_id = AsyncMock(return_value=12345)
-                    mock_tmdb.get_watch_providers = AsyncMock(return_value={
-                        "results": {"DE": {"flatrate": []}}  # No providers from TMDB
-                    })
-                    mock_tmdb._extract_providers_from_response = Mock(return_value={})
-                    
-                    # Mock Streaming Availability client
-                    mock_sa = mock_sa_class.return_value
-                    mock_sa.get_series_availability = AsyncMock(return_value={
-                        "streamingOptions": [{
-                            "service": "netflix",
-                            "type": "subscription",
-                            "link": "https://netflix.com/123"
-                        }]
-                    })
-                    mock_sa.extract_provider_info = Mock(return_value={
-                        "netflix": [{
-                            "type": "subscription",
-                            "link": "https://netflix.com/123"
-                        }]
-                    })
-                    
-                    manager.providers = {'tmdb': mock_tmdb, 'streaming_availability': mock_sa}
-                    
-                    result = await manager.get_series_availability("tt0944947", ["DE"])
-                    
-                    assert "DE" in result["countries"]
-                    assert "netflix" in result["countries"]["DE"]
-                    assert result["countries"]["DE"]["netflix"]["link"] == "https://netflix.com/123"
-                    assert "streaming_availability" in result["metadata"]["sources"]
+                    # Create manager with a mock cache to avoid real cache interference
+                    with patch('excludarr.provider_manager.TMDBCache') as mock_cache_class:
+                        mock_cache = mock_cache_class.return_value
+                        mock_cache.get_id_mapping = Mock(return_value=None)
+                        mock_cache.get_provider_data = Mock(return_value=None)
+                        mock_cache.set_id_mapping = Mock()
+                        mock_cache.set_provider_data = Mock()
+                        
+                        manager = ProviderManager(self.config, cache=mock_cache)
+                        
+                        # Mock TMDB client to return NO providers
+                        mock_tmdb = mock_tmdb_class.return_value
+                        mock_tmdb.find_series_by_imdb_id = AsyncMock(return_value=12345)
+                        mock_tmdb.get_watch_providers = AsyncMock(return_value={
+                            "results": {}  # Completely empty - no data for any country
+                        })
+                        mock_tmdb._extract_providers_from_response = Mock(return_value={})
+                        
+                        # Mock Streaming Availability client
+                        mock_sa = mock_sa_class.return_value
+                        mock_sa.get_series_availability = AsyncMock(return_value={
+                            "streamingOptions": [{
+                                "service": "netflix",
+                                "type": "subscription",
+                                "link": "https://netflix.com/123"
+                            }]
+                        })
+                        mock_sa.extract_provider_info = Mock(return_value={
+                            "netflix": [{
+                                "type": "subscription",
+                                "link": "https://netflix.com/123"
+                            }]
+                        })
+                        
+                        manager.providers = {'tmdb': mock_tmdb, 'streaming_availability': mock_sa}
+                        
+                        result = await manager.get_series_availability("tt0944947", ["DE"])
+                        
+                        # With conservative approach: only fallback when NO data from TMDB
+                        assert "DE" in result["countries"]
+                        assert "netflix" in result["countries"]["DE"]
+                        assert result["countries"]["DE"]["netflix"]["link"] == "https://netflix.com/123"
+                        assert "streaming_availability" in result["metadata"]["sources"]
     
     @pytest.mark.asyncio
     async def test_get_series_availability_rate_limit_handling(self):
@@ -274,15 +282,15 @@ class TestProviderManager:
             result = {"countries": {}}
             assert manager._should_use_streaming_availability(result, ["DE"]) is True
             
-            # Should use when providers lack deep links
+            # Should NOT use when we have any provider data (conservative approach)
             result = {
                 "countries": {
                     "DE": {
-                        "netflix": {"available": True}  # No link
+                        "netflix": {"available": True}  # Any data means no fallback needed
                     }
                 }
             }
-            assert manager._should_use_streaming_availability(result, ["DE"]) is True
+            assert manager._should_use_streaming_availability(result, ["DE"]) is False
             
             # Should not use when we have complete data
             result = {
@@ -303,7 +311,7 @@ class TestProviderManager:
             result = {"countries": {}}
             assert manager._should_use_utelly(result, ["DE"]) is True
             
-            # Should use when no transactional providers
+            # Should NOT use when we have any provider data (conservative approach)
             result = {
                 "countries": {
                     "DE": {
@@ -312,9 +320,9 @@ class TestProviderManager:
                     }
                 }
             }
-            assert manager._should_use_utelly(result, ["DE"]) is True
+            assert manager._should_use_utelly(result, ["DE"]) is False
             
-            # Should not use when we have transactional data
+            # Should not use when we have any data (conservative approach)
             result = {
                 "countries": {
                     "DE": {
