@@ -280,7 +280,7 @@ class SyncEngine:
         monitored_seasons = [s["seasonNumber"] for s in series.get("seasons", []) 
                            if s.get("monitored", False)]
         
-        # Check each provider for availability - now with season-level granularity
+        # Check each provider for availability - with fallback to series-level when no season data
         best_match = None
         max_available_seasons = 0
         
@@ -289,8 +289,25 @@ class SyncEngine:
                 available_seasons = set(provider_data.get("seasons", []))
                 monitored_seasons_set = set(monitored_seasons)
                 
-                # Find intersection of available and monitored seasons
-                matching_seasons = available_seasons.intersection(monitored_seasons_set)
+                # Handle different scenarios:
+                # 1. No season data available -> treat as series-level availability
+                # 2. No monitored seasons -> treat as series-level (legacy behavior)
+                # 3. Season data available -> use season-level matching
+                
+                if not available_seasons and not monitored_seasons_set:
+                    # Fallback to series-level: no season info available from either side
+                    matching_seasons = set([1])  # Assume season 1 for compatibility
+                    total_monitored = 1
+                    logger.debug(f"'{series_title}' using series-level logic (no season data)")
+                elif not monitored_seasons_set:
+                    # Series is monitored but no seasons are monitored - treat as series level
+                    matching_seasons = set([1])  # Assume season 1 for compatibility
+                    total_monitored = 1
+                    logger.debug(f"'{series_title}' using series-level logic (no monitored seasons)")
+                else:
+                    # Use season-level matching when both sides have season data
+                    matching_seasons = available_seasons.intersection(monitored_seasons_set)
+                    total_monitored = len(monitored_seasons_set)
                 
                 if matching_seasons:
                     # Keep the provider with the most matching seasons
@@ -299,12 +316,12 @@ class SyncEngine:
                         best_match = {
                             "name": provider_name,
                             "seasons": sorted(matching_seasons),
-                            "total_monitored": len(monitored_seasons_set),
-                            "coverage_percent": len(matching_seasons) / len(monitored_seasons_set) * 100
+                            "total_monitored": total_monitored,
+                            "coverage_percent": len(matching_seasons) / total_monitored * 100
                         }
                     
-                    # Log partial availability for visibility
-                    if matching_seasons != monitored_seasons_set:
+                    # Log partial availability for visibility (only for true season-level)
+                    if available_seasons and monitored_seasons_set and matching_seasons != monitored_seasons_set:
                         missing_seasons = monitored_seasons_set - available_seasons
                         logger.info(f"'{series_title}' partially available on {provider_name}: "
                                   f"available seasons {sorted(matching_seasons)}, "

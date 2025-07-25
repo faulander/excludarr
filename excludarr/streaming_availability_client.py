@@ -73,12 +73,17 @@ class StreamingAvailabilityClient:
         endpoint = f"shows/{imdb_id}"
         params = {"country": country.lower()}
         
-        response = await self._make_request(endpoint, params)
-        
-        # Track request
-        self._request_count += 1
-        
-        return response
+        try:
+            response = await self._make_request(endpoint, params)
+            
+            # Track successful request
+            self._request_count += 1
+            
+            return response
+        except RateLimitError as e:
+            # Mark quota as exhausted when we hit rate limits
+            self._request_count = self.daily_quota
+            raise e
     
     async def get_changes(self, country: str = "de", since: Optional[datetime] = None) -> Dict[str, Any]:
         """Get changes in availability since a specific date.
@@ -104,12 +109,17 @@ class StreamingAvailabilityClient:
             "since": int(since.timestamp())
         }
         
-        response = await self._make_request(endpoint, params)
-        
-        # Track request
-        self._request_count += 1
-        
-        return response
+        try:
+            response = await self._make_request(endpoint, params)
+            
+            # Track successful request
+            self._request_count += 1
+            
+            return response
+        except RateLimitError as e:
+            # Mark quota as exhausted when we hit rate limits
+            self._request_count = self.daily_quota
+            raise e
     
     def extract_provider_info(self, response: Dict[str, Any]) -> Dict[str, List[Dict[str, Any]]]:
         """Extract provider information from API response.
@@ -182,6 +192,9 @@ class StreamingAvailabilityClient:
                     return response.json()
                 elif response.status_code == 401:
                     raise StreamingAvailabilityError("Invalid RapidAPI key")
+                elif response.status_code == 403:
+                    # HTTP 403 typically indicates quota exceeded for this API
+                    raise RateLimitError("Daily quota exceeded (HTTP 403)")
                 elif response.status_code == 404:
                     # Return empty result for not found
                     return {"streamingOptions": []}
