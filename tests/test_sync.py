@@ -4,7 +4,7 @@ import pytest
 from unittest.mock import Mock, patch, MagicMock
 
 from excludarr.sync import SyncEngine, SyncResult, SyncDecision, SyncError
-from excludarr.models import Config, SonarrConfig, StreamingProvider, SyncConfig
+from excludarr.models import Config, SonarrConfig, StreamingProvider, SyncConfig, TMDBConfig, ProviderAPIsConfig
 
 
 class TestSyncEngine:
@@ -16,6 +16,9 @@ class TestSyncEngine:
             sonarr=SonarrConfig(
                 url="http://localhost:8989",
                 api_key="a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+            ),
+            provider_apis=ProviderAPIsConfig(
+                tmdb=TMDBConfig(api_key="test_tmdb_key")
             ),
             streaming_providers=[
                 StreamingProvider(name="netflix", country="US"),

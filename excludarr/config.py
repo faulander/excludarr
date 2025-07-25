@@ -100,11 +100,25 @@ class ConfigManager:
                 "url": "http://localhost:8989",
                 "api_key": "abcdefghijklmnopqrstuvwxyz123456"
             },
-            "jellyseerr": {
-                "url": "http://localhost:5055",
-                "api_key": "your-jellyseerr-api-key-here",
-                "timeout": 30,
-                "cache_ttl": 300
+            "provider_apis": {
+                "tmdb": {
+                    "api_key": "your-tmdb-api-key-here",
+                    "enabled": True,
+                    "rate_limit": 40,
+                    "cache_ttl": 86400
+                },
+                "streaming_availability": {
+                    "enabled": False,
+                    "rapidapi_key": "your-rapidapi-key-here",
+                    "daily_quota": 100,
+                    "cache_ttl": 43200
+                },
+                "utelly": {
+                    "enabled": False,
+                    "rapidapi_key": "your-rapidapi-key-here",
+                    "monthly_quota": 1000,
+                    "cache_ttl": 604800
+                }
             },
             "streaming_providers": [
                 {
@@ -141,13 +155,31 @@ class ConfigManager:
         return """# Excludarr Configuration File
 #
 # This file configures excludarr to sync your Sonarr instance with
-# streaming services you subscribe to.
+# streaming services you subscribe to using free provider APIs.
 
 # Sonarr connection settings
 # Get your API key from Sonarr -> Settings -> General -> Security
 # sonarr:
 #   url: "http://localhost:8989"      # Your Sonarr URL
 #   api_key: "your_32_character_api_key"
+
+# Provider APIs configuration
+# Get TMDB API key (free) from https://www.themoviedb.org/settings/api
+# RapidAPI keys (optional) from https://rapidapi.com for fallback providers
+# provider_apis:
+#   tmdb:
+#     api_key: "your_tmdb_api_key"    # Required - completely free
+#     enabled: true
+#     rate_limit: 40                  # requests per 10 seconds
+#     cache_ttl: 86400               # 24 hours
+#   streaming_availability:
+#     enabled: false                  # Enable for enhanced fallback
+#     rapidapi_key: "your_key"       # 100 requests/day free
+#     daily_quota: 100
+#   utelly:
+#     enabled: false                  # Enable for price data
+#     rapidapi_key: "your_key"       # 1000 requests/month free
+#     monthly_quota: 1000
 
 # Streaming providers you subscribe to
 # Each provider needs a name and 2-letter country code

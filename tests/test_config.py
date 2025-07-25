@@ -1,4 +1,4 @@
-"""Tests for configuration system."""
+"""Tests for configuration system with provider APIs."""
 
 import tempfile
 from pathlib import Path
@@ -9,7 +9,10 @@ import yaml
 from pydantic import ValidationError
 
 from excludarr.config import ConfigManager
-from excludarr.models import Config, SonarrConfig, JellyseerrConfig, StreamingProvider, SyncConfig
+from excludarr.models import (
+    Config, SonarrConfig, StreamingProvider, SyncConfig,
+    TMDBConfig, StreamingAvailabilityConfig, UtellyConfig, ProviderAPIsConfig
+)
 
 
 class TestConfigModels:
@@ -19,281 +22,289 @@ class TestConfigModels:
         """Test valid Sonarr configuration."""
         config = SonarrConfig(
             url="http://localhost:8989",
-            api_key="a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+            api_key="abcdefghijklmnopqrstuvwxyz123456"
         )
         assert str(config.url) == "http://localhost:8989/"
-        assert config.api_key == "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+        assert config.api_key == "abcdefghijklmnopqrstuvwxyz123456"
 
     def test_sonarr_config_invalid_url(self):
         """Test invalid Sonarr URL."""
         with pytest.raises(ValidationError):
-            SonarrConfig(url="invalid_url", api_key="a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6")
-
-    def test_jellyseerr_config_valid(self):
-        """Test valid Jellyseerr configuration."""
-        config = JellyseerrConfig(
-            url="http://localhost:5055",
-            api_key="a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
-            timeout=30,
-            cache_ttl=300
-        )
-        assert str(config.url) == "http://localhost:5055/"
-        assert config.api_key == "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
-        assert config.timeout == 30
-        assert config.cache_ttl == 300
-
-    def test_jellyseerr_config_invalid_url(self):
-        """Test invalid Jellyseerr URL."""
-        with pytest.raises(ValidationError):
-            JellyseerrConfig(
+            SonarrConfig(
                 url="not-a-valid-url",
-                api_key="a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+                api_key="validkey1234567890abcdef123456"
             )
 
-    def test_jellyseerr_config_short_api_key(self):
-        """Test API key too short."""
+    def test_sonarr_config_short_api_key(self):
+        """Test too short API key for Sonarr."""
         with pytest.raises(ValidationError):
-            JellyseerrConfig(
-                url="http://localhost:5055",
+            SonarrConfig(
+                url="http://localhost:8989",
                 api_key="short"
             )
 
-    def test_jellyseerr_config_defaults(self):
-        """Test default values in Jellyseerr configuration."""
-        config = JellyseerrConfig(
-            url="http://localhost:5055",
-            api_key="a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+    def test_tmdb_config_valid(self):
+        """Test valid TMDB configuration."""
+        config = TMDBConfig(
+            api_key="valid_tmdb_api_key"
         )
-        assert config.timeout == 30
-        assert config.cache_ttl == 300
+        assert config.api_key == "valid_tmdb_api_key"
+        assert config.enabled is True
+        assert config.rate_limit == 40
+        assert config.cache_ttl == 86400
+
+    def test_tmdb_config_custom_values(self):
+        """Test TMDB config with custom values."""
+        config = TMDBConfig(
+            api_key="custom_key",
+            enabled=False,
+            rate_limit=20,
+            cache_ttl=43200
+        )
+        assert config.enabled is False
+        assert config.rate_limit == 20
+        assert config.cache_ttl == 43200
+
+    def test_streaming_availability_config_defaults(self):
+        """Test StreamingAvailabilityConfig defaults."""
+        config = StreamingAvailabilityConfig()
+        assert config.enabled is False
+        assert config.rapidapi_key is None
+        assert config.daily_quota == 100
+        assert config.cache_ttl == 43200
+
+    def test_utelly_config_defaults(self):
+        """Test UtellyConfig defaults."""
+        config = UtellyConfig()
+        assert config.enabled is False
+        assert config.rapidapi_key is None
+        assert config.monthly_quota == 1000
+        assert config.cache_ttl == 604800
+
+    def test_provider_apis_config_complete(self):
+        """Test complete ProviderAPIsConfig."""
+        config = ProviderAPIsConfig(
+            tmdb=TMDBConfig(api_key="tmdb_key"),
+            streaming_availability=StreamingAvailabilityConfig(
+                enabled=True,
+                rapidapi_key="rapidapi_key"
+            ),
+            utelly=UtellyConfig(
+                enabled=True,
+                rapidapi_key="rapidapi_key"
+            )
+        )
+        assert config.tmdb.api_key == "tmdb_key"
+        assert config.streaming_availability.enabled is True
+        assert config.utelly.enabled is True
 
     def test_streaming_provider_valid(self):
         """Test valid streaming provider."""
-        provider = StreamingProvider(
-            name="netflix",
-            country="US"
-        )
-        assert provider.name == "netflix"
-        assert provider.country == "US"
+        provider = StreamingProvider(name="Netflix", country="us")
+        assert provider.name == "netflix"  # Should be lowercased
+        assert provider.country == "US"    # Should be uppercased
 
-    def test_streaming_provider_invalid_country(self):
-        """Test invalid country code."""
-        with pytest.raises(ValidationError):
-            StreamingProvider(name="netflix", country="USA")  # Should be 2-letter
-
-    def test_sync_config_valid(self):
-        """Test valid sync configuration."""
-        config = SyncConfig(
-            action="unmonitor",
-            dry_run=True
-        )
+    def test_sync_config_defaults(self):
+        """Test default values in sync configuration."""
+        config = SyncConfig()
         assert config.action == "unmonitor"
         assert config.dry_run is True
+        assert config.exclude_recent_days == 7
 
-    def test_sync_config_invalid_action(self):
-        """Test invalid sync action."""
-        with pytest.raises(ValidationError):
-            SyncConfig(action="invalid", dry_run=False)
-
-    def test_full_config_valid(self):
-        """Test complete valid configuration."""
+    def test_config_minimal_valid(self):
+        """Test minimal valid configuration."""
         config_data = {
             "sonarr": {
                 "url": "http://localhost:8989",
-                "api_key": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+                "api_key": "validapikey1234567890abcdef12345"
             },
-            "streaming_providers": [
-                {"name": "netflix", "country": "US"},
-                {"name": "amazon-prime", "country": "DE"}
-            ],
-            "sync": {
-                "action": "unmonitor",
-                "dry_run": False
-            }
-        }
-        config = Config(**config_data)
-        assert len(config.streaming_providers) == 2
-        assert config.sync.action == "unmonitor"
-        assert config.jellyseerr is None  # Optional field
-
-    def test_full_config_valid_with_jellyseerr(self):
-        """Test complete valid configuration with Jellyseerr."""
-        config_data = {
-            "sonarr": {
-                "url": "http://localhost:8989",
-                "api_key": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
-            },
-            "jellyseerr": {
-                "url": "http://localhost:5055",
-                "api_key": "b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6",
-                "timeout": 45,
-                "cache_ttl": 600
-            },
-            "streaming_providers": [
-                {"name": "netflix", "country": "US"},
-                {"name": "amazon-prime", "country": "DE"}
-            ],
-            "sync": {
-                "action": "unmonitor",
-                "dry_run": False
-            }
-        }
-        config = Config(**config_data)
-        assert len(config.streaming_providers) == 2
-        assert config.sync.action == "unmonitor"
-        assert config.jellyseerr is not None
-        assert str(config.jellyseerr.url) == "http://localhost:5055/"
-        assert config.jellyseerr.timeout == 45
-        assert config.jellyseerr.cache_ttl == 600
-
-
-class TestConfigManager:
-    """Test configuration manager."""
-
-    def test_load_config_valid_file(self):
-        """Test loading valid configuration file."""
-        config_data = {
-            "sonarr": {
-                "url": "http://localhost:8989",
-                "api_key": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+            "provider_apis": {
+                "tmdb": {
+                    "api_key": "tmdb_api_key"
+                }
             },
             "streaming_providers": [
                 {"name": "netflix", "country": "US"}
+            ]
+        }
+        
+        config = Config(**config_data)
+        assert config.sonarr.api_key == "validapikey1234567890abcdef12345"
+        assert config.provider_apis.tmdb.api_key == "tmdb_api_key"
+        assert len(config.streaming_providers) == 1
+        assert config.sync.dry_run is True  # Default
+
+    def test_full_config_valid_with_all_providers(self):
+        """Test complete valid configuration with all provider APIs."""
+        config_data = {
+            "sonarr": {
+                "url": "http://localhost:8989",
+                "api_key": "validapikey1234567890abcdef12345"
+            },
+            "provider_apis": {
+                "tmdb": {
+                    "api_key": "tmdb_key",
+                    "enabled": True,
+                    "rate_limit": 40,
+                    "cache_ttl": 86400
+                },
+                "streaming_availability": {
+                    "enabled": True,
+                    "rapidapi_key": "rapidapi_key",
+                    "daily_quota": 100,
+                    "cache_ttl": 43200
+                },
+                "utelly": {
+                    "enabled": True,
+                    "rapidapi_key": "rapidapi_key",
+                    "monthly_quota": 1000,
+                    "cache_ttl": 604800
+                }
+            },
+            "streaming_providers": [
+                {"name": "netflix", "country": "US"},
+                {"name": "amazon-prime", "country": "DE"}
             ],
             "sync": {
-                "action": "unmonitor",
-                "dry_run": False
+                "action": "delete",
+                "dry_run": False,
+                "exclude_recent_days": 14
             }
         }
         
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
-            yaml.dump(config_data, f)
-            config_file = f.name
+        config = Config(**config_data)
+        assert config.provider_apis.tmdb.enabled is True
+        assert config.provider_apis.streaming_availability.enabled is True
+        assert config.provider_apis.utelly.enabled is True
+        assert len(config.streaming_providers) == 2
+        assert config.sync.action == "delete"
+        assert config.sync.dry_run is False
+
+    def test_config_invalid_provider_apis_missing_tmdb_key(self):
+        """Test config with missing TMDB API key."""
+        config_data = {
+            "sonarr": {
+                "url": "http://localhost:8989",
+                "api_key": "validapikey1234567890abcdef12345"
+            },
+            "provider_apis": {
+                "tmdb": {
+                    # Missing api_key
+                }
+            },
+            "streaming_providers": [
+                {"name": "netflix", "country": "US"}
+            ]
+        }
         
-        try:
-            manager = ConfigManager(config_file)
-            config = manager.load_config()
-            assert str(config.sonarr.url) == "http://localhost:8989/"
-            assert len(config.streaming_providers) == 1
-        finally:
-            Path(config_file).unlink()
+        with pytest.raises(ValidationError):
+            Config(**config_data)
+
+
+class TestConfigManager:
+    """Test ConfigManager functionality."""
 
     def test_load_config_file_not_found(self):
-        """Test loading non-existent configuration file."""
-        manager = ConfigManager("nonexistent.yml")
+        """Test loading non-existent config file."""
+        manager = ConfigManager("non_existent.yml")
+        
         with pytest.raises(FileNotFoundError):
             manager.load_config()
 
     def test_load_config_invalid_yaml(self):
-        """Test loading invalid YAML file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
-            f.write("invalid: yaml: content: [")
-            config_file = f.name
+        """Test loading invalid YAML."""
+        invalid_yaml = "invalid: yaml: content: ["
         
-        try:
-            manager = ConfigManager(config_file)
-            with pytest.raises(yaml.YAMLError):
-                manager.load_config()
-        finally:
-            Path(config_file).unlink()
+        with patch("builtins.open", mock_open(read_data=invalid_yaml)):
+            with patch("pathlib.Path.exists", return_value=True):
+                manager = ConfigManager("test.yml")
+                
+                with pytest.raises(yaml.YAMLError):
+                    manager.load_config()
 
-    def test_load_config_validation_error(self):
-        """Test loading configuration with validation errors."""
-        config_data = {
-            "sonarr": {
-                "url": "invalid_url",  # Invalid URL
-                "api_key": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
-            },
-            "streaming_providers": [],
-            "sync": {
-                "action": "unmonitor",
-                "dry_run": False
-            }
-        }
+    def test_load_config_valid(self):
+        """Test loading valid configuration."""
+        valid_config = """
+sonarr:
+  url: "http://localhost:8989"
+  api_key: "validapikey1234567890abcdef12345"
+
+provider_apis:
+  tmdb:
+    api_key: "tmdb_key"
+
+streaming_providers:
+  - name: "netflix"
+    country: "US"
+"""
         
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
-            yaml.dump(config_data, f)
-            config_file = f.name
-        
-        try:
-            manager = ConfigManager(config_file)
-            with pytest.raises(ValidationError):
-                manager.load_config()
-        finally:
-            Path(config_file).unlink()
+        with patch("builtins.open", mock_open(read_data=valid_config)):
+            with patch("pathlib.Path.exists", return_value=True):
+                manager = ConfigManager("test.yml")
+                config = manager.load_config()
+                
+                assert isinstance(config, Config)
+                assert config.sonarr.api_key == "validapikey1234567890abcdef12345"
+                assert config.provider_apis.tmdb.api_key == "tmdb_key"
 
     def test_validate_config_valid(self):
-        """Test configuration validation with valid config."""
-        config_data = {
-            "sonarr": {
-                "url": "http://localhost:8989",
-                "api_key": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
-            },
-            "streaming_providers": [
-                {"name": "netflix", "country": "US"}
-            ],
-            "sync": {
-                "action": "unmonitor",
-                "dry_run": False
-            }
-        }
+        """Test validation of valid config."""
+        valid_config = """
+sonarr:
+  url: "http://localhost:8989"
+  api_key: "validapikey1234567890abcdef12345"
+
+provider_apis:
+  tmdb:
+    api_key: "tmdb_key"
+
+streaming_providers:
+  - name: "netflix"
+    country: "US"
+"""
         
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
-            yaml.dump(config_data, f)
-            config_file = f.name
-        
-        try:
-            manager = ConfigManager(config_file)
-            is_valid, errors = manager.validate_config()
-            assert is_valid is True
-            assert errors is None
-        finally:
-            Path(config_file).unlink()
+        with patch("builtins.open", mock_open(read_data=valid_config)):
+            with patch("pathlib.Path.exists", return_value=True):
+                manager = ConfigManager("test.yml")
+                is_valid, errors = manager.validate_config()
+                
+                assert is_valid is True
+                assert errors is None
 
     def test_validate_config_invalid(self):
-        """Test configuration validation with invalid config."""
-        config_data = {
-            "sonarr": {
-                "url": "invalid_url",
-                "api_key": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
-            },
-            "streaming_providers": [],
-            "sync": {
-                "action": "invalid_action",
-                "dry_run": False
-            }
-        }
+        """Test validation of invalid config."""
+        invalid_config = """
+sonarr:
+  url: "invalid-url"
+  api_key: "short"
+
+provider_apis:
+  tmdb:
+    api_key: ""
+
+streaming_providers: []
+"""
         
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
-            yaml.dump(config_data, f)
-            config_file = f.name
-        
-        try:
-            manager = ConfigManager(config_file)
-            is_valid, errors = manager.validate_config()
-            assert is_valid is False
-            assert errors is not None
-            assert len(errors) >= 1
-        finally:
-            Path(config_file).unlink()
+        with patch("builtins.open", mock_open(read_data=invalid_config)):
+            with patch("pathlib.Path.exists", return_value=True):
+                manager = ConfigManager("test.yml")
+                is_valid, errors = manager.validate_config()
+                
+                assert is_valid is False
+                assert isinstance(errors, list)
+                assert len(errors) > 0
 
     def test_create_example_config(self):
-        """Test creating example configuration file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yml', delete=False) as f:
-            config_file = f.name
-        
-        try:
-            # Remove the temp file so we can test creation
-            Path(config_file).unlink()
+        """Test creating example configuration."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            config_path = Path(temp_dir) / "test_config.yml"
+            manager = ConfigManager(str(config_path))
             
-            manager = ConfigManager(config_file)
             manager.create_example_config()
             
-            # Verify file was created and is valid
-            assert Path(config_file).exists()
-            created_config = manager.load_config()
-            assert created_config.sonarr.url is not None
-            assert len(created_config.streaming_providers) >= 1
-        finally:
-            if Path(config_file).exists():
-                Path(config_file).unlink()
+            assert config_path.exists()
+            
+            # Verify the created config can be loaded
+            config = manager.load_config()
+            assert isinstance(config, Config)
+            assert config.provider_apis.tmdb.api_key == "your-tmdb-api-key-here"

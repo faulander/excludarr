@@ -55,38 +55,96 @@ class StreamingProvider(BaseModel):
         return v.lower().strip()
 
 
-class JellyseerrConfig(BaseModel):
-    """Jellyseerr connection configuration."""
+class TMDBConfig(BaseModel):
+    """TMDB API configuration."""
     
-    url: HttpUrl = Field(
-        ...,
-        description="Jellyseerr instance URL (e.g., http://localhost:5055)"
-    )
     api_key: str = Field(
         ...,
-        min_length=10,
-        description="Jellyseerr API key"
+        min_length=1,
+        description="TMDB API key from themoviedb.org"
     )
-    timeout: int = Field(
-        default=30,
-        ge=5,
-        le=120,
-        description="Request timeout in seconds"
+    enabled: bool = Field(
+        default=True,
+        description="Enable TMDB provider"
+    )
+    rate_limit: int = Field(
+        default=40,
+        ge=1,
+        le=100,
+        description="Rate limit: requests per 10 seconds"
     )
     cache_ttl: int = Field(
-        default=300,
-        ge=60,
-        le=3600,
-        description="Cache TTL in seconds"
+        default=86400,
+        ge=3600,
+        le=604800,
+        description="Cache TTL in seconds (1 hour to 1 week)"
     )
+
+
+class StreamingAvailabilityConfig(BaseModel):
+    """Streaming Availability API configuration."""
     
-    @field_validator("api_key")
-    @classmethod
-    def validate_api_key(cls, v: str) -> str:
-        """Validate API key format."""
-        if len(v) < 10:
-            raise ValueError("API key must be at least 10 characters long")
-        return v
+    rapidapi_key: Optional[str] = Field(
+        default=None,
+        description="RapidAPI key for Streaming Availability API"
+    )
+    enabled: bool = Field(
+        default=False,
+        description="Enable Streaming Availability API as fallback"
+    )
+    daily_quota: int = Field(
+        default=100,
+        ge=1,
+        description="Daily request quota for free tier"
+    )
+    cache_ttl: int = Field(
+        default=43200,
+        ge=3600,
+        le=86400,
+        description="Cache TTL in seconds (1-24 hours)"
+    )
+
+
+class UtellyConfig(BaseModel):
+    """Utelly API configuration."""
+    
+    rapidapi_key: Optional[str] = Field(
+        default=None,
+        description="RapidAPI key for Utelly API"
+    )
+    enabled: bool = Field(
+        default=False,
+        description="Enable Utelly API for price data"
+    )
+    monthly_quota: int = Field(
+        default=1000,
+        ge=1,
+        description="Monthly request quota for free tier"
+    )
+    cache_ttl: int = Field(
+        default=604800,
+        ge=86400,
+        le=2592000,
+        description="Cache TTL in seconds (1-30 days)"
+    )
+
+
+class ProviderAPIsConfig(BaseModel):
+    """Provider APIs configuration."""
+    
+    tmdb: TMDBConfig = Field(
+        ...,
+        description="TMDB configuration (primary provider)"
+    )
+    streaming_availability: StreamingAvailabilityConfig = Field(
+        default_factory=StreamingAvailabilityConfig,
+        description="Streaming Availability API configuration (fallback)"
+    )
+    utelly: UtellyConfig = Field(
+        default_factory=UtellyConfig,
+        description="Utelly API configuration (price data)"
+    )
+
 
 
 class SyncConfig(BaseModel):
@@ -114,9 +172,9 @@ class Config(BaseModel):
         ...,
         description="Sonarr connection settings"
     )
-    jellyseerr: Optional[JellyseerrConfig] = Field(
-        default=None,
-        description="Jellyseerr connection settings (optional)"
+    provider_apis: ProviderAPIsConfig = Field(
+        ...,
+        description="Provider APIs configuration"
     )
     streaming_providers: List[StreamingProvider] = Field(
         ...,
