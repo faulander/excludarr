@@ -1,6 +1,6 @@
 """Pydantic models for configuration validation."""
 
-from typing import List, Literal
+from typing import List, Literal, Optional
 
 from pydantic import BaseModel, Field, HttpUrl, field_validator
 
@@ -55,6 +55,40 @@ class StreamingProvider(BaseModel):
         return v.lower().strip()
 
 
+class JellyseerrConfig(BaseModel):
+    """Jellyseerr connection configuration."""
+    
+    url: HttpUrl = Field(
+        ...,
+        description="Jellyseerr instance URL (e.g., http://localhost:5055)"
+    )
+    api_key: str = Field(
+        ...,
+        min_length=10,
+        description="Jellyseerr API key"
+    )
+    timeout: int = Field(
+        default=30,
+        ge=5,
+        le=120,
+        description="Request timeout in seconds"
+    )
+    cache_ttl: int = Field(
+        default=300,
+        ge=60,
+        le=3600,
+        description="Cache TTL in seconds"
+    )
+    
+    @field_validator("api_key")
+    @classmethod
+    def validate_api_key(cls, v: str) -> str:
+        """Validate API key format."""
+        if len(v) < 10:
+            raise ValueError("API key must be at least 10 characters long")
+        return v
+
+
 class SyncConfig(BaseModel):
     """Sync operation configuration."""
     
@@ -79,6 +113,10 @@ class Config(BaseModel):
     sonarr: SonarrConfig = Field(
         ...,
         description="Sonarr connection settings"
+    )
+    jellyseerr: Optional[JellyseerrConfig] = Field(
+        default=None,
+        description="Jellyseerr connection settings (optional)"
     )
     streaming_providers: List[StreamingProvider] = Field(
         ...,

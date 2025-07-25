@@ -23,4 +23,5 @@ dev = [
     "pytest-cov>=6.2.1",
     "pytest-mock>=3.14.1",
     "responses>=0.25.7",
+    "respx>=0.21.1",
 ]

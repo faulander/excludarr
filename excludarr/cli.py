@@ -9,6 +9,7 @@ from excludarr import __version__
 from excludarr.config import ConfigManager
 from excludarr.logging import setup_logging
 from excludarr.providers import ProviderManager, ProviderError
+from excludarr.sync import SyncEngine, SyncError
 
 
 @click.group(invoke_without_command=True)
@@ -421,6 +422,172 @@ def provider_validate(provider_name, country_code):
         console.print(f"[red]Provider error: {e}[/red]")
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
+
+
+@cli.command()
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    help="Preview changes without applying them (overrides config setting)"
+)
+@click.option(
+    "--action",
+    type=click.Choice(["unmonitor", "delete"]),
+    help="Action to take (overrides config setting)"
+)
+@click.option(
+    "--confirm",
+    is_flag=True,
+    help="Skip confirmation prompts (for automation)"
+)
+@click.pass_context
+def sync(ctx, dry_run, action, confirm):
+    """Sync Sonarr with streaming providers."""
+    console = Console()
+    config_path = ctx.obj['config']
+    
+    try:
+        # Load configuration
+        config_manager = ConfigManager(config_path)
+        config = config_manager.load_config()
+        
+        # Override config settings if provided
+        if dry_run:
+            config.sync.dry_run = True
+        if action:
+            config.sync.action = action
+        
+        # Show configuration summary
+        console.print("\n[cyan]Sync Configuration:[/cyan]")
+        table = Table()
+        table.add_column("Setting", style="cyan")
+        table.add_column("Value", style="green")
+        
+        table.add_row("Sonarr URL", str(config.sonarr.url))
+        table.add_row("Action", config.sync.action)
+        table.add_row("Dry Run", "Yes" if config.sync.dry_run else "No")
+        table.add_row("Exclude Recent Days", str(config.sync.exclude_recent_days))
+        table.add_row("Streaming Providers", str(len(config.streaming_providers)))
+        
+        console.print(table)
+        
+        # Show providers
+        if config.streaming_providers:
+            provider_table = Table(title="Configured Streaming Providers")
+            provider_table.add_column("Provider", style="cyan")
+            provider_table.add_column("Country", style="yellow")
+            
+            for provider in config.streaming_providers:
+                provider_table.add_row(provider.name, provider.country)
+            
+            console.print(provider_table)
+        
+        # Confirmation for non-dry-run operations
+        if not config.sync.dry_run and not confirm:
+            console.print(f"\n[yellow]⚠️  This will {config.sync.action} series from Sonarr![/yellow]")
+            if not click.confirm("Are you sure you want to continue?"):
+                console.print("[red]Sync cancelled by user[/red]")
+                return
+        
+        # Initialize sync engine
+        console.print("\n[cyan]Initializing sync engine...[/cyan]")
+        sync_engine = SyncEngine(config)
+        
+        # Test connectivity
+        with console.status("[blue]Testing connectivity..."):
+            connectivity = sync_engine.test_connectivity()
+        
+        # Check connectivity results
+        if not connectivity["sonarr"]["connected"]:
+            console.print(f"[red]✗ Sonarr connection failed: {connectivity['sonarr']['error']}[/red]")
+            ctx.exit(1)
+        
+        if not connectivity["providers"]["loaded"]:
+            console.print(f"[red]✗ Provider loading failed: {connectivity['providers']['error']}[/red]")
+            ctx.exit(1)
+        
+        console.print("[green]✓ All connectivity checks passed[/green]")
+        
+        # Run sync
+        console.print("\n[cyan]Starting sync operation...[/cyan]")
+        
+        with console.status("[blue]Syncing with streaming providers..."):
+            results = sync_engine.run_sync()
+        
+        # Display results
+        if not results:
+            console.print("[yellow]No series processed during sync[/yellow]")
+            return
+        
+        # Summary statistics
+        summary = sync_engine._get_sync_summary(results)
+        
+        console.print(f"\n[green]✓ Sync completed![/green]")
+        console.print(f"Processed: {summary['total_processed']}")
+        console.print(f"Successful: {summary['successful']}")
+        console.print(f"Failed: {summary['failed']}")
+        
+        # Show actions taken
+        if summary['actions']:
+            action_table = Table(title="Actions Taken")
+            action_table.add_column("Action", style="cyan")
+            action_table.add_column("Count", style="green", justify="right")
+            
+            for action_name, count in summary['actions'].items():
+                action_table.add_row(action_name, str(count))
+            
+            console.print(action_table)
+        
+        # Show provider breakdown
+        if summary['providers']:
+            provider_table = Table(title="Provider Breakdown")
+            provider_table.add_column("Provider", style="cyan")
+            provider_table.add_column("Series", style="green", justify="right")
+            
+            for provider_name, count in summary['providers'].items():
+                provider_table.add_row(provider_name, str(count))
+            
+            console.print(provider_table)
+        
+        # Show detailed results if verbose
+        verbose_level = ctx.obj.get('verbose', 0)
+        if verbose_level > 0:
+            console.print("\n[cyan]Detailed Results:[/cyan]")
+            result_table = Table()
+            result_table.add_column("Series", style="cyan")
+            result_table.add_column("Action", style="yellow")
+            result_table.add_column("Result", style="green")
+            result_table.add_column("Provider", style="blue")
+            
+            for result in results:
+                status = "✓" if result.success else "✗"
+                result_table.add_row(
+                    result.series_title,
+                    result.action_taken,
+                    f"{status} {result.message}",
+                    result.provider or "N/A"
+                )
+            
+            console.print(result_table)
+        
+        # Show errors if any
+        failed_results = [r for r in results if not r.success]
+        if failed_results:
+            console.print("\n[red]Errors encountered:[/red]")
+            for result in failed_results:
+                console.print(f"  • {result.series_title}: {result.message}")
+        
+    except FileNotFoundError:
+        console.print(f"[red]Configuration file not found: {config_path}[/red]")
+        console.print("Run 'excludarr config init' to create a configuration file")
+        ctx.exit(1)
+    except SyncError as e:
+        console.print(f"[red]Sync failed: {e}[/red]")
+        ctx.exit(1)
+    except Exception as e:
+        console.print(f"[red]Unexpected error: {e}[/red]")
+        logger.exception("Unexpected error during sync")
+        ctx.exit(1)
 
 
 if __name__ == "__main__":

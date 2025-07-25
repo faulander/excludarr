@@ -9,7 +9,7 @@ import yaml
 from pydantic import ValidationError
 
 from excludarr.config import ConfigManager
-from excludarr.models import Config, SonarrConfig, StreamingProvider, SyncConfig
+from excludarr.models import Config, SonarrConfig, JellyseerrConfig, StreamingProvider, SyncConfig
 
 
 class TestConfigModels:
@@ -28,6 +28,44 @@ class TestConfigModels:
         """Test invalid Sonarr URL."""
         with pytest.raises(ValidationError):
             SonarrConfig(url="invalid_url", api_key="a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6")
+
+    def test_jellyseerr_config_valid(self):
+        """Test valid Jellyseerr configuration."""
+        config = JellyseerrConfig(
+            url="http://localhost:5055",
+            api_key="a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+            timeout=30,
+            cache_ttl=300
+        )
+        assert str(config.url) == "http://localhost:5055/"
+        assert config.api_key == "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+        assert config.timeout == 30
+        assert config.cache_ttl == 300
+
+    def test_jellyseerr_config_invalid_url(self):
+        """Test invalid Jellyseerr URL."""
+        with pytest.raises(ValidationError):
+            JellyseerrConfig(
+                url="not-a-valid-url",
+                api_key="a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+            )
+
+    def test_jellyseerr_config_short_api_key(self):
+        """Test API key too short."""
+        with pytest.raises(ValidationError):
+            JellyseerrConfig(
+                url="http://localhost:5055",
+                api_key="short"
+            )
+
+    def test_jellyseerr_config_defaults(self):
+        """Test default values in Jellyseerr configuration."""
+        config = JellyseerrConfig(
+            url="http://localhost:5055",
+            api_key="a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+        )
+        assert config.timeout == 30
+        assert config.cache_ttl == 300
 
     def test_streaming_provider_valid(self):
         """Test valid streaming provider."""
@@ -76,6 +114,37 @@ class TestConfigModels:
         config = Config(**config_data)
         assert len(config.streaming_providers) == 2
         assert config.sync.action == "unmonitor"
+        assert config.jellyseerr is None  # Optional field
+
+    def test_full_config_valid_with_jellyseerr(self):
+        """Test complete valid configuration with Jellyseerr."""
+        config_data = {
+            "sonarr": {
+                "url": "http://localhost:8989",
+                "api_key": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6"
+            },
+            "jellyseerr": {
+                "url": "http://localhost:5055",
+                "api_key": "b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6",
+                "timeout": 45,
+                "cache_ttl": 600
+            },
+            "streaming_providers": [
+                {"name": "netflix", "country": "US"},
+                {"name": "amazon-prime", "country": "DE"}
+            ],
+            "sync": {
+                "action": "unmonitor",
+                "dry_run": False
+            }
+        }
+        config = Config(**config_data)
+        assert len(config.streaming_providers) == 2
+        assert config.sync.action == "unmonitor"
+        assert config.jellyseerr is not None
+        assert str(config.jellyseerr.url) == "http://localhost:5055/"
+        assert config.jellyseerr.timeout == 45
+        assert config.jellyseerr.cache_ttl == 600
 
 
 class TestConfigManager:

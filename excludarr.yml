@@ -28,6 +28,14 @@
 sonarr:
   api_key: c30957f85cfd4ba1968076c7e8375d52
   url: http://192.168.42.167:8989
+
+# Jellyseerr connection (optional - comment out if not using)
+# Get your API key from Jellyseerr -> Settings -> General -> API Key
+jellyseerr:
+  url: "http://192.168.42.167:5055"  # Your Jellyseerr URL
+  api_key: "MTcwMjQ5NzU5MjIyNzhiMmVmM2RiLTEyMmQtNDZhOC05NTM1LTc5ZTY5YzRhYWUxNQ=="  # Replace with your actual API key
+  timeout: 30
+  cache_ttl: 300
 streaming_providers:
 - country: DE
   name: amazon-prime

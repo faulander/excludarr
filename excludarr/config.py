@@ -100,6 +100,12 @@ class ConfigManager:
                 "url": "http://localhost:8989",
                 "api_key": "abcdefghijklmnopqrstuvwxyz123456"
             },
+            "jellyseerr": {
+                "url": "http://localhost:5055",
+                "api_key": "your-jellyseerr-api-key-here",
+                "timeout": 30,
+                "cache_ttl": 300
+            },
             "streaming_providers": [
                 {
                     "name": "netflix",
