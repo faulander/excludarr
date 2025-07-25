@@ -245,16 +245,20 @@ class TMDBClient:
             params: Query parameters
             
         Returns:
-            Complete URL with API key
+            Complete URL with API key (v3) or without (v4 uses Bearer token)
         """
         # Remove leading slash from endpoint if present
         endpoint = endpoint.lstrip('/')
         url = f"{self.base_url}/{endpoint}"
         
-        # Add API key to parameters
-        all_params = {"api_key": self.api_key}
-        if params:
-            all_params.update(params)
+        # For v4 Bearer tokens, don't add API key to query params
+        if self.api_key.startswith("eyJ"):  # JWT token
+            all_params = params or {}
+        else:
+            # For v3 API keys, add to query parameters
+            all_params = {"api_key": self.api_key}
+            if params:
+                all_params.update(params)
         
         if all_params:
             url += "?" + urlencode(all_params)
@@ -264,10 +268,16 @@ class TMDBClient:
     @property
     def _headers(self) -> Dict[str, str]:
         """Get HTTP headers for requests."""
-        return {
+        headers = {
             "User-Agent": "excludarr/1.0.0 (https://github.com/user/excludarr)",
             "Accept": "application/json"
         }
+        
+        # Check if this is a v4 Bearer token (JWT) or v3 API key
+        if self.api_key.startswith("eyJ"):  # JWT tokens start with "eyJ"
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        
+        return headers
     
     def _normalize_provider_name(self, provider_name: str) -> str:
         """Normalize provider name for consistent matching.
@@ -316,11 +326,17 @@ class TMDBClient:
             
             # Extract from all availability types (flatrate, buy, rent, etc.)
             for availability_type, provider_list in country_data.items():
+                # Skip non-provider fields like "link"
+                if availability_type == "link" or not isinstance(provider_list, list):
+                    continue
+                
                 for provider in provider_list:
-                    provider_name = provider.get("provider_name", "")
-                    if provider_name:
-                        normalized_name = self._normalize_provider_name(provider_name)
-                        providers.add(normalized_name)
+                    # Ensure provider is a dict with the expected structure
+                    if isinstance(provider, dict):
+                        provider_name = provider.get("provider_name", "")
+                        if provider_name:
+                            normalized_name = self._normalize_provider_name(provider_name)
+                            providers.add(normalized_name)
             
             if providers:
                 extracted[country] = sorted(list(providers))

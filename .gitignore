@@ -10,3 +10,17 @@ wheels/
 .venv
 
 .agent-os/*
+
+# Configuration files (contain API keys)
+excludarr.yml
+config.yml
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+tmdb_cache.db
+availability_cache.db
+
+# Temporary test files
+test_live*.py

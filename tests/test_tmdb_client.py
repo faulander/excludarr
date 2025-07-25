@@ -276,13 +276,26 @@ class TestTMDBClient:
             with pytest.raises(TMDBError, match="Invalid IMDb ID format"):
                 self.client._validate_imdb_id(imdb_id)
     
-    def test_build_url_basic(self):
-        """Test URL building with basic endpoint."""
+    def test_build_url_basic_v3_api_key(self):
+        """Test URL building with basic endpoint for v3 API key."""
         url = self.client._build_url("test/endpoint")
         assert url == "https://api.themoviedb.org/3/test/endpoint?api_key=test_tmdb_api_key"
     
-    def test_build_url_with_params(self):
-        """Test URL building with query parameters."""
+    def test_build_url_basic_v4_bearer_token(self):
+        """Test URL building with basic endpoint for v4 Bearer token."""
+        # Create client with Bearer token (JWT)
+        bearer_config = TMDBConfig(
+            api_key="eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJ0ZXN0IiwibmJmIjowLCJzdWIiOiJ0ZXN0Iiwic2NvcGVzIjpbImFwaV9yZWFkIl0sInZlcnNpb24iOjF9.test",
+            enabled=True
+        )
+        bearer_client = TMDBClient(bearer_config)
+        
+        url = bearer_client._build_url("test/endpoint")
+        # v4 Bearer token should NOT include api_key in URL
+        assert url == "https://api.themoviedb.org/3/test/endpoint"
+    
+    def test_build_url_with_params_v3_api_key(self):
+        """Test URL building with query parameters for v3 API key."""
         params = {"param1": "value1", "param2": "value2"}
         url = self.client._build_url("test/endpoint", params)
         
@@ -291,14 +304,53 @@ class TestTMDBClient:
         assert "param2=value2" in url
         assert "api_key=test_tmdb_api_key" in url
     
-    def test_headers_property(self):
-        """Test HTTP headers for requests."""
+    def test_build_url_with_params_v4_bearer_token(self):
+        """Test URL building with query parameters for v4 Bearer token."""
+        # Create client with Bearer token (JWT)
+        bearer_config = TMDBConfig(
+            api_key="eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJ0ZXN0IiwibmJmIjowLCJzdWIiOiJ0ZXN0Iiwic2NvcGVzIjpbImFwaV9yZWFkIl0sInZlcnNpb24iOjF9.test",
+            enabled=True
+        )
+        bearer_client = TMDBClient(bearer_config)
+        
+        params = {"param1": "value1", "param2": "value2"}
+        url = bearer_client._build_url("test/endpoint", params)
+        
+        assert "https://api.themoviedb.org/3/test/endpoint" in url
+        assert "param1=value1" in url
+        assert "param2=value2" in url
+        # v4 Bearer token should NOT include api_key in URL
+        assert "api_key=" not in url
+    
+    def test_headers_property_v3_api_key(self):
+        """Test HTTP headers for v3 API key requests."""
         headers = self.client._headers
         
         assert "User-Agent" in headers
         assert "excludarr" in headers["User-Agent"]
         assert "Accept" in headers
         assert headers["Accept"] == "application/json"
+        # v3 API key should not add Authorization header
+        assert "Authorization" not in headers
+    
+    def test_headers_property_v4_bearer_token(self):
+        """Test HTTP headers for v4 Bearer token requests."""
+        # Create client with Bearer token (JWT)
+        bearer_config = TMDBConfig(
+            api_key="eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJ0ZXN0IiwibmJmIjowLCJzdWIiOiJ0ZXN0Iiwic2NvcGVzIjpbImFwaV9yZWFkIl0sInZlcnNpb24iOjF9.test",
+            enabled=True
+        )
+        bearer_client = TMDBClient(bearer_config)
+        
+        headers = bearer_client._headers
+        
+        assert "User-Agent" in headers
+        assert "excludarr" in headers["User-Agent"]
+        assert "Accept" in headers
+        assert headers["Accept"] == "application/json"
+        # v4 Bearer token should add Authorization header
+        assert "Authorization" in headers
+        assert headers["Authorization"].startswith("Bearer eyJ")
 
 
 class TestTMDBClientRateLimiting:
