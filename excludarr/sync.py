@@ -28,6 +28,7 @@ class SyncDecision:
     reason: str
     provider: Optional[str] = None
     affected_seasons: Optional[List[int]] = None
+    scope: str = "series"  # "series" or "seasons"
 
 
 @dataclass
@@ -279,38 +280,62 @@ class SyncEngine:
         monitored_seasons = [s["seasonNumber"] for s in series.get("seasons", []) 
                            if s.get("monitored", False)]
         
-        # Check each provider for availability
-        available_providers = []
+        # Check each provider for availability - now with season-level granularity
+        best_match = None
+        max_available_seasons = 0
+        
         for provider_name, provider_data in availability.items():
             if provider_data.get("available", False):
                 available_seasons = set(provider_data.get("seasons", []))
                 monitored_seasons_set = set(monitored_seasons)
                 
-                # Check if all monitored seasons are available
-                if monitored_seasons_set.issubset(available_seasons):
-                    available_providers.append({
-                        "name": provider_name,
-                        "seasons": sorted(available_seasons.intersection(monitored_seasons_set))
-                    })
-                else:
-                    # Partial availability - log but don't include
-                    missing_seasons = monitored_seasons_set - available_seasons
-                    logger.debug(f"'{series_title}' partially available on {provider_name}, missing seasons: {sorted(missing_seasons)}")
+                # Find intersection of available and monitored seasons
+                matching_seasons = available_seasons.intersection(monitored_seasons_set)
+                
+                if matching_seasons:
+                    # Keep the provider with the most matching seasons
+                    if len(matching_seasons) > max_available_seasons:
+                        max_available_seasons = len(matching_seasons)
+                        best_match = {
+                            "name": provider_name,
+                            "seasons": sorted(matching_seasons),
+                            "total_monitored": len(monitored_seasons_set),
+                            "coverage_percent": len(matching_seasons) / len(monitored_seasons_set) * 100
+                        }
+                    
+                    # Log partial availability for visibility
+                    if matching_seasons != monitored_seasons_set:
+                        missing_seasons = monitored_seasons_set - available_seasons
+                        logger.info(f"'{series_title}' partially available on {provider_name}: "
+                                  f"available seasons {sorted(matching_seasons)}, "
+                                  f"missing seasons {sorted(missing_seasons)}")
         
         # Make decision based on availability
-        if available_providers:
-            # Use the first available provider
-            provider = available_providers[0]
-            seasons_str = ", ".join(map(str, provider["seasons"]))
+        if best_match:
+            seasons_str = ", ".join(map(str, best_match["seasons"]))
+            action_type = "delete" if self.config.sync.action == "delete" else "unmonitor"
+            
+            # Determine action scope based on season availability
+            if len(best_match["seasons"]) == best_match["total_monitored"]:
+                # All seasons available - can delete/unmonitor entire series
+                scope = "series"
+                reason = f"All seasons available on {best_match['name']}"
+            else:
+                # Partial availability - only unmonitor available seasons (no deletion for partial)
+                if self.config.sync.action == "delete":
+                    action_type = "unmonitor"  # Force to unmonitor for partial matches
+                scope = "seasons"
+                reason = f"Seasons {seasons_str} available on {best_match['name']}"
             
             return SyncDecision(
                 series_id=series_id,
                 series_title=series_title,
-                action=self.config.sync.action,
+                action=action_type,
                 should_process=True,
-                reason=f"Available on {provider['name']} (seasons: {seasons_str})",
-                provider=provider["name"],
-                affected_seasons=provider["seasons"]
+                reason=reason,
+                provider=best_match["name"],
+                affected_seasons=best_match["seasons"],
+                scope=scope  # "series" or "seasons"
             )
         else:
             return SyncDecision(
@@ -333,7 +358,14 @@ class SyncEngine:
         if self.config.sync.dry_run:
             # Dry run mode - just log what would happen
             action_verb = "delete" if decision.action == "delete" else "unmonitor"
-            message = f"Would {action_verb} series '{decision.series_title}' ({decision.reason})"
+            
+            if decision.scope == "seasons" and decision.affected_seasons:
+                seasons_str = ", ".join(map(str, decision.affected_seasons))
+                target = f"seasons {seasons_str} of series"
+            else:
+                target = "series"
+            
+            message = f"Would {action_verb} {target} '{decision.series_title}' ({decision.reason})"
             logger.info(f"DRY RUN: {message}")
             
             return SyncResult(
@@ -348,20 +380,47 @@ class SyncEngine:
         # Execute actual action
         try:
             if decision.action == "unmonitor":
-                success = self.sonarr_client.unmonitor_series(decision.series_id)
-                if success:
-                    message = f"Unmonitored series '{decision.series_title}' ({decision.reason})"
-                    logger.info(message)
-                    return SyncResult(
-                        series_id=decision.series_id,
-                        series_title=decision.series_title,
-                        success=True,
-                        action_taken="unmonitor",
-                        message=message,
-                        provider=decision.provider
-                    )
+                if decision.scope == "seasons" and decision.affected_seasons:
+                    # Unmonitor specific seasons
+                    success_count = 0
+                    for season_num in decision.affected_seasons:
+                        try:
+                            success = self.sonarr_client.unmonitor_season(decision.series_id, season_num)
+                            if success:
+                                success_count += 1
+                                logger.info(f"Unmonitored season {season_num} of series '{decision.series_title}'")
+                        except Exception as e:
+                            logger.error(f"Failed to unmonitor season {season_num} of series '{decision.series_title}': {e}")
+                    
+                    if success_count > 0:
+                        seasons_str = ", ".join(map(str, decision.affected_seasons[:success_count]))
+                        message = f"Unmonitored seasons {seasons_str} of series '{decision.series_title}' ({decision.reason})"
+                        return SyncResult(
+                            series_id=decision.series_id,
+                            series_title=decision.series_title,
+                            success=True,
+                            action_taken="unmonitor",
+                            message=message,
+                            provider=decision.provider
+                        )
+                    else:
+                        raise SyncError("Failed to unmonitor any seasons")
                 else:
-                    raise SyncError("Unmonitor operation returned failure")
+                    # Unmonitor entire series
+                    success = self.sonarr_client.unmonitor_series(decision.series_id)
+                    if success:
+                        message = f"Unmonitored series '{decision.series_title}' ({decision.reason})"
+                        logger.info(message)
+                        return SyncResult(
+                            series_id=decision.series_id,
+                            series_title=decision.series_title,
+                            success=True,
+                            action_taken="unmonitor",
+                            message=message,
+                            provider=decision.provider
+                        )
+                    else:
+                        raise SyncError("Unmonitor operation returned failure")
                     
             elif decision.action == "delete":
                 success = self.sonarr_client.delete_series(decision.series_id, delete_files=False)

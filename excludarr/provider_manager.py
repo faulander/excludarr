@@ -259,34 +259,24 @@ class ProviderManager:
     
     def _should_use_streaming_availability(self, result: Dict, countries: List[str]) -> bool:
         """Determine if Streaming Availability API should be used."""
-        # Use if we need deep links or if some countries have no data
+        # Only use if TMDB has no data at all for the requested countries
         for country in countries:
             if country not in result["countries"] or not result["countries"][country]:
                 return True
-            
-            # Check if any provider lacks deep links
-            for provider_data in result["countries"][country].values():
-                if not provider_data.get("link"):
-                    return True
         
+        # Don't use for deep links - TMDB data is sufficient for our needs
         return False
     
     def _should_use_utelly(self, result: Dict, countries: List[str]) -> bool:
         """Determine if Utelly API should be used."""
-        # Use if we need pricing data or rental/purchase options
+        # Only use if TMDB has absolutely no data and we need pricing information
+        # Since we only care about streaming (not rental/purchase), rarely needed
         for country in countries:
-            if country not in result["countries"]:
-                return True
-            
-            # Check if we have any rent/buy providers
-            has_transactional = any(
-                provider.get("type") in ["rent", "buy", "rent/buy"]
-                for provider in result["countries"][country].values()
-            )
-            
-            if not has_transactional:
-                return True
+            if country not in result["countries"] or not result["countries"][country]:
+                # Only if Streaming Availability also failed
+                return "streaming_availability" not in result["metadata"]["sources"]
         
+        # Don't use for pricing data - we only care about streaming availability
         return False
     
     def _normalize_provider_name(self, name: str) -> str:

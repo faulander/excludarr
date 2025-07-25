@@ -145,7 +145,7 @@ class TestSyncEngine:
         decision = self.sync_engine._make_sync_decision(series, availability)
         
         assert decision.action == "unmonitor"  # From config
-        assert decision.reason == "Available on netflix (seasons: 1, 2)"
+        assert decision.reason == "All seasons available on netflix"
         assert decision.should_process is True
         assert decision.provider == "netflix"
 
@@ -191,8 +191,11 @@ class TestSyncEngine:
         
         decision = self.sync_engine._make_sync_decision(series, availability)
         
-        assert decision.should_process is False
-        assert decision.reason == "Not available on any configured streaming providers"
+        # With season-level granularity, partial availability now triggers action
+        assert decision.should_process is True
+        assert decision.reason == "Seasons 1, 2 available on netflix"
+        assert decision.scope == "seasons"
+        assert decision.affected_seasons == [1, 2]
 
     def test_execute_sync_decision_dry_run(self):
         """Test executing sync decision in dry-run mode."""
