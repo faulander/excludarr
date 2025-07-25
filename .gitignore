@@ -5,12 +5,14 @@ build/
 dist/
 wheels/
 *.egg-info
+.pytest_cache/
 
 # Virtual environments
 .venv
 
 .agent-os/*
 CLAUDE.md
+claude/*
 
 # Configuration files (contain API keys)
 excludarr.yml

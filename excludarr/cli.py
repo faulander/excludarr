@@ -441,10 +441,23 @@ def provider_validate(provider_name, country_code):
     is_flag=True,
     help="Skip confirmation prompts (for automation)"
 )
+@click.option(
+    "--json",
+    "json_output",
+    is_flag=True,
+    help="Output results in JSON format (for automation/scripting)"
+)
 @click.pass_context
-def sync(ctx, dry_run, action, confirm):
+def sync(ctx, dry_run, action, confirm, json_output):
     """Sync Sonarr with streaming providers."""
-    console = Console()
+    if json_output:
+        # For JSON output, disable rich console to avoid ANSI codes
+        console = Console(file=None, force_terminal=False)
+        # Also suppress logging to avoid mixed output
+        import logging
+        logging.getLogger("excludarr").setLevel(logging.CRITICAL)
+    else:
+        console = Console()
     config_path = ctx.obj['config']
     
     try:
@@ -458,30 +471,31 @@ def sync(ctx, dry_run, action, confirm):
         if action:
             config.sync.action = action
         
-        # Show configuration summary
-        console.print("\n[cyan]Sync Configuration:[/cyan]")
-        table = Table()
-        table.add_column("Setting", style="cyan")
-        table.add_column("Value", style="green")
-        
-        table.add_row("Sonarr URL", str(config.sonarr.url))
-        table.add_row("Action", config.sync.action)
-        table.add_row("Dry Run", "Yes" if config.sync.dry_run else "No")
-        table.add_row("Exclude Recent Days", str(config.sync.exclude_recent_days))
-        table.add_row("Streaming Providers", str(len(config.streaming_providers)))
-        
-        console.print(table)
-        
-        # Show providers
-        if config.streaming_providers:
-            provider_table = Table(title="Configured Streaming Providers")
-            provider_table.add_column("Provider", style="cyan")
-            provider_table.add_column("Country", style="yellow")
+        # Show configuration summary (skip for JSON output)
+        if not json_output:
+            console.print("\n[cyan]Sync Configuration:[/cyan]")
+            table = Table()
+            table.add_column("Setting", style="cyan")
+            table.add_column("Value", style="green")
             
-            for provider in config.streaming_providers:
-                provider_table.add_row(provider.name, provider.country)
+            table.add_row("Sonarr URL", str(config.sonarr.url))
+            table.add_row("Action", config.sync.action)
+            table.add_row("Dry Run", "Yes" if config.sync.dry_run else "No")
+            table.add_row("Exclude Recent Days", str(config.sync.exclude_recent_days))
+            table.add_row("Streaming Providers", str(len(config.streaming_providers)))
             
-            console.print(provider_table)
+            console.print(table)
+            
+            # Show providers
+            if config.streaming_providers:
+                provider_table = Table(title="Configured Streaming Providers")
+                provider_table.add_column("Provider", style="cyan")
+                provider_table.add_column("Country", style="yellow")
+                
+                for provider in config.streaming_providers:
+                    provider_table.add_row(provider.name, provider.country)
+                
+                console.print(provider_table)
         
         # Confirmation for non-dry-run operations
         if not config.sync.dry_run and not confirm:
@@ -491,41 +505,113 @@ def sync(ctx, dry_run, action, confirm):
                 return
         
         # Initialize sync engine
-        console.print("\n[cyan]Initializing sync engine...[/cyan]")
+        if not json_output:
+            console.print("\n[cyan]Initializing sync engine...[/cyan]")
         sync_engine = SyncEngine(config)
         
         # Test connectivity
-        with console.status("[blue]Testing connectivity..."):
+        if json_output:
             connectivity = sync_engine.test_connectivity()
+        else:
+            with console.status("[blue]Testing connectivity..."):
+                connectivity = sync_engine.test_connectivity()
         
         # Check connectivity results
         if not connectivity["sonarr"]["connected"]:
-            console.print(f"[red]✗ Sonarr connection failed: {connectivity['sonarr']['error']}[/red]")
+            if json_output:
+                error_output = {
+                    "error": "sonarr_connection_failed",
+                    "message": connectivity['sonarr']['error']
+                }
+                import json
+                print(json.dumps(error_output))
+            else:
+                console.print(f"[red]✗ Sonarr connection failed: {connectivity['sonarr']['error']}[/red]")
             ctx.exit(1)
         
         if not connectivity["provider_manager"]["initialized"]:
-            console.print(f"[red]✗ Provider manager initialization failed: {connectivity['provider_manager']['error']}[/red]")
+            if json_output:
+                error_output = {
+                    "error": "provider_manager_failed",
+                    "message": connectivity['provider_manager']['error']
+                }
+                import json
+                print(json.dumps(error_output))
+            else:
+                console.print(f"[red]✗ Provider manager initialization failed: {connectivity['provider_manager']['error']}[/red]")
             ctx.exit(1)
         
         if not connectivity["cache"]["initialized"]:
-            console.print(f"[red]✗ Cache initialization failed: {connectivity['cache']['error']}[/red]")
+            if json_output:
+                error_output = {
+                    "error": "cache_failed",
+                    "message": connectivity['cache']['error']
+                }
+                import json
+                print(json.dumps(error_output))
+            else:
+                console.print(f"[red]✗ Cache initialization failed: {connectivity['cache']['error']}[/red]")
             ctx.exit(1)
         
-        console.print("[green]✓ All connectivity checks passed[/green]")
+        if not json_output:
+            console.print("[green]✓ All connectivity checks passed[/green]")
+            console.print("\n[cyan]Starting sync operation...[/cyan]")
         
         # Run sync
-        console.print("\n[cyan]Starting sync operation...[/cyan]")
-        
-        with console.status("[blue]Syncing with streaming providers..."):
+        if json_output:
             results = asyncio.run(sync_engine.run_sync())
+        else:
+            with console.status("[blue]Syncing with streaming providers..."):
+                results = asyncio.run(sync_engine.run_sync())
         
         # Display results
         if not results:
-            console.print("[yellow]No series processed during sync[/yellow]")
+            if json_output:
+                import json
+                from datetime import datetime
+                output = {
+                    "timestamp": datetime.now().isoformat(),
+                    "dry_run": config.sync.dry_run,
+                    "action": config.sync.action,
+                    "summary": {"total_processed": 0, "successful": 0, "failed": 0, "actions": {}, "providers": {}},
+                    "results": []
+                }
+                print(json.dumps(output, indent=2))
+            else:
+                console.print("[yellow]No series processed during sync[/yellow]")
             return
         
         # Summary statistics
         summary = sync_engine._get_sync_summary(results)
+        
+        # JSON output mode for automation/scripting
+        if json_output:
+            import json
+            from datetime import datetime
+            
+            # Convert results to JSON-serializable format
+            json_results = []
+            for result in results:
+                json_results.append({
+                    "series_id": result.series_id,
+                    "series_title": result.series_title,
+                    "success": result.success,
+                    "action_taken": result.action_taken,
+                    "message": result.message,
+                    "provider": result.provider,
+                    "error": result.error
+                })
+            
+            output = {
+                "timestamp": datetime.now().isoformat(),
+                "dry_run": config.sync.dry_run,
+                "action": config.sync.action,
+                "summary": summary,
+                "results": json_results
+            }
+            
+            print(json.dumps(output, indent=2))
+            return
         
         console.print(f"\n[green]✓ Sync completed![/green]")
         console.print(f"Processed: {summary['total_processed']}")

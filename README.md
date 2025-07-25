@@ -264,7 +264,51 @@ excludarr sync --confirm
 
 # Verbose output
 excludarr -vvv sync
+
+# JSON output for automation/scripting
+excludarr sync --json
 ```
+
+## JSON Output for Automation
+
+Excludarr supports JSON output mode for integration with automation tools and scripts:
+
+```bash
+# JSON output with clean machine-readable format
+excludarr sync --dry-run --json
+
+# Example JSON structure:
+{
+  "timestamp": "2025-07-25T15:19:09.256952",
+  "dry_run": true,
+  "action": "unmonitor",
+  "summary": {
+    "total_processed": 139,
+    "successful": 139,
+    "failed": 0,
+    "actions": {"none": 137, "unmonitor": 2},
+    "providers": {"amazon-prime": 2}
+  },
+  "results": [
+    {
+      "series_id": 1208,
+      "series_title": "Cross",
+      "success": true,
+      "action_taken": "unmonitor",
+      "message": "Available on amazon-prime",
+      "provider": "amazon-prime",
+      "error": null
+    }
+  ]
+}
+```
+
+**JSON Output Features:**
+- Clean JSON format with no log messages mixed in
+- Machine-readable timestamps and statistics
+- Detailed per-series results with actions taken
+- Error handling with structured error information
+- Perfect for CI/CD pipelines and automation scripts
 
 ## API Providers
 
