@@ -230,11 +230,11 @@ class TMDBClient:
         if not imdb_id or not isinstance(imdb_id, str):
             raise TMDBError("Invalid IMDb ID format - must be a non-empty string")
         
-        # IMDb title IDs follow pattern: tt followed by 7 digits
-        pattern = r'^tt\d{7}$'
+        # IMDb title IDs follow pattern: tt followed by 7+ digits
+        pattern = r'^tt\d{7,}$'
         if not re.match(pattern, imdb_id):
             raise TMDBError(
-                "Invalid IMDb ID format - must be 'tt' followed by 7 digits (e.g., tt1234567)"
+                "Invalid IMDb ID format - must be 'tt' followed by 7+ digits (e.g., tt1234567, tt12345678)"
             )
     
     def _build_url(self, endpoint: str, params: Optional[Dict[str, Any]] = None) -> str:

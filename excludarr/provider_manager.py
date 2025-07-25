@@ -150,7 +150,7 @@ class ProviderManager:
             logger.warning(f"Series {imdb_id} not found on TMDB")
             return None
         except Exception as e:
-            logger.error(f"Error getting TMDB data: {e}")
+            logger.error(f"Error getting TMDB data for IMDb ID '{imdb_id}': {e}")
             return None
     
     async def _get_streaming_availability_data(self, imdb_id: str, countries: List[str]) -> Dict[str, Dict]:

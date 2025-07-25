@@ -254,7 +254,7 @@ class TestTMDBClient:
     
     def test_validate_imdb_id_valid(self):
         """Test IMDb ID validation with valid IDs."""
-        valid_ids = ["tt1234567", "tt0123456", "tt9999999"]
+        valid_ids = ["tt1234567", "tt0123456", "tt9999999", "tt12345678", "tt123456789"]
         
         for imdb_id in valid_ids:
             # Should not raise exception
@@ -265,7 +265,6 @@ class TestTMDBClient:
         invalid_ids = [
             "1234567",      # Missing 'tt' prefix
             "tt123",        # Too short
-            "tt12345678",   # Too long
             "tt123456a",    # Contains letter
             "TT1234567",    # Wrong case
             "",             # Empty
