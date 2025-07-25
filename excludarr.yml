@@ -1,45 +1,45 @@
 # Excludarr Configuration File
 #
 # This file configures excludarr to sync your Sonarr instance with
-# streaming services you subscribe to.
+# streaming services you subscribe to using free provider APIs.
 
 # Sonarr connection settings
 # Get your API key from Sonarr -> Settings -> General -> Security
-# sonarr:
-#   url: "http://localhost:8989"      # Your Sonarr URL
-#   api_key: "your_32_character_api_key"
+sonarr:
+  url: "http://192.168.42.167:8989"      # Your Sonarr URL
+  api_key: "c30957f85cfd4ba1968076c7e8375d52"  # Your Sonarr API key
+
+# Provider APIs configuration
+# Get TMDB API key (free) from https://www.themoviedb.org/settings/api
+# RapidAPI keys (optional) from https://rapidapi.com for fallback providers
+provider_apis:
+  tmdb:
+    api_key: "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI1MjU0N2U1N2JjOGZiZWIyNDBhZjUwNDM2NGYwNWMwNiIsIm5iZiI6MTY0NjQ3NTE5OC4xNDYsInN1YiI6IjYyMjMzN2JlMjFjNGNhMDA2ZTQ3MmJjMyIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.qOudD8uXauA2dS1aaFHbzjbnOiQF0zWz-itvgDIHhv0"    # TMDB API key - completely free
+    enabled: true                 # Always keep enabled
+    rate_limit: 40               # requests per 10 seconds
+    cache_ttl: 86400            # 24 hours
+
+  streaming_availability:
+    enabled: false              # Enable for enhanced fallback
+    rapidapi_key: null          # Get from rapidapi.com
+    daily_quota: 100           # 100 requests/day free
+    cache_ttl: 43200          # 12 hours
+
+  utelly:
+    enabled: false              # Enable for price data
+    rapidapi_key: null          # Get from rapidapi.com
+    monthly_quota: 1000        # 1000 requests/month free
+    cache_ttl: 604800         # 7 days
 
 # Streaming providers you subscribe to
 # Each provider needs a name and 2-letter country code
 # Common providers: netflix, amazon-prime, hulu, disney-plus, hbo-max
-# streaming_providers:
-#   - name: "netflix"
-#     country: "US"
-#   - name: "amazon-prime"
-#     country: "DE"
+streaming_providers:
+  - name: "amazon-prime"
+    country: "DE"
 
 # Sync operation settings
-# sync:
-#   action: "unmonitor"           # "unmonitor" or "delete"
-#   dry_run: true                 # Preview changes without applying
-#   exclude_recent_days: 7        # Don't process recently added shows
-
-# Configuration:
-sonarr:
-  api_key: c30957f85cfd4ba1968076c7e8375d52
-  url: http://192.168.42.167:8989
-
-# Jellyseerr connection (optional - comment out if not using)
-# Get your API key from Jellyseerr -> Settings -> General -> API Key
-jellyseerr:
-  url: "http://192.168.42.167:5055"  # Your Jellyseerr URL
-  api_key: "MTcwMjQ5NzU5MjIyNzhiMmVmM2RiLTEyMmQtNDZhOC05NTM1LTc5ZTY5YzRhYWUxNQ=="  # Replace with your actual API key
-  timeout: 30
-  cache_ttl: 300
-streaming_providers:
-- country: DE
-  name: amazon-prime
 sync:
-  action: unmonitor
-  dry_run: true
-  exclude_recent_days: 7
+  action: "unmonitor"           # "unmonitor" or "delete"
+  dry_run: true                 # Preview changes without applying
+  exclude_recent_days: 7        # Don't process recently added shows
