@@ -5,6 +5,7 @@ import click
 from loguru import logger
 from rich.console import Console
 from rich.table import Table
+from rich.progress import Progress, TaskID
 
 from excludarr import __version__
 from excludarr.config import ConfigManager
@@ -561,8 +562,29 @@ def sync(ctx, dry_run, action, confirm, json_output):
         if json_output:
             results = asyncio.run(sync_engine.run_sync())
         else:
-            with console.status("[blue]Syncing with streaming providers..."):
-                results = asyncio.run(sync_engine.run_sync())
+            # Temporarily suppress loguru output during progress to avoid interference with progress bar
+            from loguru import logger
+            
+            # Store current handlers and remove them
+            current_handlers = logger._core.handlers.copy()
+            for handler_id in list(current_handlers.keys()):
+                logger.remove(handler_id)
+            
+            try:
+                # Use progress bar for better user experience
+                with Progress(console=console, transient=False) as progress:
+                    task_id = progress.add_task("[blue]Syncing with streaming providers...", total=100)
+                    
+                    def update_progress(current: int, total: int, series_title: str):
+                        progress.update(task_id, completed=current, total=total, 
+                                      description=f"[blue]Processing {series_title} ({current}/{total})")
+                    
+                    results = asyncio.run(sync_engine.run_sync(progress_callback=update_progress))
+            finally:
+                # Restore original handlers - need to recreate them since loguru doesn't support re-adding
+                from excludarr.logging import setup_logging
+                verbose_level = ctx.obj.get('verbose', 0)
+                setup_logging(verbose_level)
         
         # Display results
         if not results:
@@ -703,7 +725,8 @@ def sync(ctx, dry_run, action, confirm, json_output):
             console.print(result_table)
         elif show_details and not actionable_results:
             if config.sync.dry_run:
-                console.print("\n[green]No actions would be taken - all series are either not available on streaming services or were recently added.[/green]")
+                action_verb = "delete" if config.sync.action == "delete" else "unmonitor"
+                console.print(f"\n[green]No series would be {action_verb}ed - all series are either not available on streaming services or were recently added.[/green]")
         
         # Show errors if any
         failed_results = [r for r in results if not r.success]

@@ -347,17 +347,19 @@ excludarr sync --dry-run --json
 4. **Fallback Providers**: Optional fallback to other free APIs when TMDB data is unavailable
 5. **Intelligent Caching**: TTL-based caching (24h for TMDB, variable for others)
 6. **Rate Limiting**: Respects API limits with automatic backoff and retry
-7. **Decision Making**: Determines actions based on complete season availability
+7. **Decision Making**: Determines actions based on season-level analysis with series-level fallback
 8. **Action Execution**: Unmonitors or deletes series according to configuration
 9. **Safety Measures**: Excludes recently added series and provides detailed logging
 
 ### Availability Logic
 
-- Series must be **completely available** on a streaming provider (all monitored seasons)
-- Partial availability is logged but doesn't trigger actions
-- Recently added series (configurable days) are automatically excluded
-- Each series is only processed once per sync run
-- Provider names are intelligently normalized for consistent matching
+- **Season-Level Sync**: Analyzes availability at both series and season levels for intelligent decisions
+- **Complete Availability**: Series with all monitored seasons available can be deleted or unmonitored entirely
+- **Partial Availability**: Individual seasons available on streaming are unmonitored (series deletion only for complete availability)
+- **Fallback to Series-Level**: When season data is unavailable, uses series-level availability decisions
+- **Smart Detection**: Handles series with no monitored seasons through series-level fallback logic
+- **Recently Added Exclusion**: Automatically excludes recently added series (configurable days)
+- **Intelligent Normalization**: Provider names are automatically normalized for consistent matching
 
 ### Data Sources Priority
 

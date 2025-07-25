@@ -79,8 +79,11 @@ class SyncEngine:
         
         logger.info(f"Sync engine initialized with {len(self.user_providers)} providers in {len(self.user_countries)} countries")
 
-    async def run_sync(self) -> List[SyncResult]:
+    async def run_sync(self, progress_callback=None) -> List[SyncResult]:
         """Run complete sync operation.
+        
+        Args:
+            progress_callback: Optional callback function(current, total, series_title)
         
         Returns:
             List of sync results
@@ -102,16 +105,23 @@ class SyncEngine:
             
             # Process each series
             results = []
-            for series in eligible_series:
+            total_series = len(eligible_series)
+            for i, series in enumerate(eligible_series, 1):
+                series_title = series.get('title', 'Unknown')
+                
+                # Update progress if callback provided
+                if progress_callback:
+                    progress_callback(i, total_series, series_title)
+                
                 try:
                     result = await self._process_series(series)
                     if result:
                         results.append(result)
                 except Exception as e:
-                    logger.error(f"Failed to process series {series.get('title', 'Unknown')}: {e}")
+                    logger.error(f"Failed to process series {series_title}: {e}")
                     results.append(SyncResult(
                         series_id=series.get("id", 0),
-                        series_title=series.get("title", "Unknown"),
+                        series_title=series_title,
                         success=False,
                         action_taken="none",
                         message=f"Processing failed: {e}",
