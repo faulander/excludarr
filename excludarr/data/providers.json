@@ -1,0 +1,385 @@
+{
+  "netflix": {
+    "name": "netflix",
+    "display_name": "Netflix",
+    "countries": [
+      "US", "CA", "GB", "IE", "AU", "NZ", "DE", "AT", "CH", "FR", "BE", "NL", 
+      "LU", "IT", "ES", "PT", "SE", "NO", "DK", "FI", "IS", "PL", "CZ", "SK", 
+      "HU", "RO", "BG", "HR", "SI", "EE", "LV", "LT", "GR", "CY", "MT", "JP", 
+      "KR", "TW", "HK", "SG", "MY", "TH", "PH", "ID", "VN", "IN", "BR", "MX", 
+      "AR", "CL", "CO", "PE", "UY", "PY", "BO", "EC", "VE", "CR", "PA", "GT", 
+      "HN", "SV", "NI", "DO", "JM", "TT", "BB", "BS", "BZ", "GY", "SR", "GF",
+      "ZA", "NG", "KE", "GH", "UG", "TZ", "ZW", "BW", "ZM", "MW", "MZ", "MG",
+      "MU", "SC", "RE", "YT", "NC", "PF", "WF", "PM", "MQ", "GP", "GG", "JE",
+      "IM", "FO", "GL", "SJ", "AD", "MC", "SM", "VA", "LI", "TR", "IL", "AE",
+      "SA", "KW", "QA", "BH", "OM", "JO", "LB", "EG", "MA", "TN", "DZ", "LY"
+    ]
+  },
+  "amazon-prime": {
+    "name": "amazon-prime",
+    "display_name": "Amazon Prime Video",
+    "countries": [
+      "US", "CA", "GB", "IE", "AU", "NZ", "DE", "AT", "CH", "FR", "BE", "NL",
+      "LU", "IT", "ES", "PT", "SE", "NO", "DK", "FI", "PL", "CZ", "SK", "HU",
+      "RO", "BG", "HR", "SI", "EE", "LV", "LT", "GR", "CY", "MT", "JP", "KR",
+      "TW", "HK", "SG", "MY", "TH", "PH", "ID", "VN", "IN", "BR", "MX", "AR",
+      "CL", "CO", "PE", "UY", "PY", "BO", "EC", "VE", "CR", "PA", "GT", "HN",
+      "SV", "NI", "DO", "JM", "TT", "BB", "BS", "BZ", "GY", "SR", "ZA", "NG",
+      "KE", "GH", "UG", "TZ", "ZW", "BW", "ZM", "MW", "MZ", "MG", "MU", "SC",
+      "TR", "IL", "AE", "SA", "KW", "QA", "BH", "OM", "JO", "LB", "EG", "MA"
+    ]
+  },
+  "disney-plus": {
+    "name": "disney-plus",
+    "display_name": "Disney+",
+    "countries": [
+      "US", "CA", "GB", "IE", "AU", "NZ", "DE", "AT", "CH", "FR", "BE", "NL",
+      "LU", "IT", "ES", "PT", "SE", "NO", "DK", "FI", "IS", "PL", "CZ", "SK",
+      "HU", "RO", "BG", "HR", "SI", "EE", "LV", "LT", "GR", "CY", "MT", "JP",
+      "KR", "TW", "HK", "SG", "MY", "TH", "PH", "ID", "VN", "IN", "BR", "MX",
+      "AR", "CL", "CO", "PE", "UY", "PY", "BO", "EC", "VE", "CR", "PA", "GT",
+      "HN", "SV", "NI", "DO", "JM", "TT", "BB", "ZA", "TR", "IL", "AE", "SA",
+      "KW", "QA", "BH", "OM", "JO", "LB", "EG", "MA", "TN", "DZ"
+    ]
+  },
+  "hulu": {
+    "name": "hulu",
+    "display_name": "Hulu",
+    "countries": ["US", "JP"]
+  },
+  "hbo-max": {
+    "name": "hbo-max",
+    "display_name": "HBO Max",
+    "countries": [
+      "US", "CA", "MX", "AR", "CL", "CO", "PE", "UY", "PY", "BO", "EC", "VE",
+      "CR", "PA", "GT", "HN", "SV", "NI", "DO", "JM", "TT", "BB", "BS", "BZ"
+    ]
+  },
+  "paramount-plus": {
+    "name": "paramount-plus",
+    "display_name": "Paramount+",
+    "countries": [
+      "US", "CA", "GB", "IE", "AU", "NZ", "DE", "AT", "CH", "FR", "IT", "ES",
+      "SE", "NO", "DK", "FI", "BR", "MX", "AR", "CL", "CO", "PE", "KR"
+    ]
+  },
+  "peacock": {
+    "name": "peacock",
+    "display_name": "Peacock",
+    "countries": ["US", "GB", "IE", "DE", "AT", "CH", "IT"]
+  },
+  "apple-tv": {
+    "name": "apple-tv",
+    "display_name": "Apple TV+",
+    "countries": [
+      "US", "CA", "GB", "IE", "AU", "NZ", "DE", "AT", "CH", "FR", "BE", "NL",
+      "LU", "IT", "ES", "PT", "SE", "NO", "DK", "FI", "IS", "PL", "CZ", "SK",
+      "HU", "RO", "BG", "HR", "SI", "EE", "LV", "LT", "GR", "CY", "MT", "JP",
+      "KR", "TW", "HK", "SG", "MY", "TH", "PH", "ID", "VN", "IN", "BR", "MX",
+      "AR", "CL", "CO", "PE", "UY", "PY", "BO", "EC", "VE", "CR", "PA", "GT",
+      "HN", "SV", "NI", "DO", "JM", "TT", "BB", "BS", "BZ", "ZA", "NG", "KE",
+      "GH", "UG", "TZ", "ZW", "BW", "ZM", "MW", "MZ", "MG", "MU", "SC", "TR",
+      "IL", "AE", "SA", "KW", "QA", "BH", "OM", "JO", "LB", "EG", "MA", "TN"
+    ]
+  },
+  "youtube-premium": {
+    "name": "youtube-premium",
+    "display_name": "YouTube Premium",
+    "countries": [
+      "US", "CA", "GB", "IE", "AU", "NZ", "DE", "AT", "CH", "FR", "BE", "NL",
+      "LU", "IT", "ES", "PT", "SE", "NO", "DK", "FI", "IS", "PL", "CZ", "SK",
+      "HU", "RO", "BG", "HR", "SI", "EE", "LV", "LT", "GR", "CY", "MT", "JP",
+      "KR", "TW", "HK", "SG", "MY", "TH", "PH", "ID", "VN", "IN", "BR", "MX",
+      "AR", "CL", "CO", "PE", "UY", "PY", "BO", "EC", "VE", "CR", "PA", "GT",
+      "HN", "SV", "NI", "DO", "JM", "TT", "BB", "BS", "BZ", "ZA", "NG", "KE",
+      "GH", "UG", "TZ", "ZW", "BW", "ZM", "MW", "MZ", "MG", "MU", "SC", "TR",
+      "IL", "AE", "SA", "KW", "QA", "BH", "OM", "JO", "LB", "EG", "MA", "TN"
+    ]
+  },
+  "crunchyroll": {
+    "name": "crunchyroll",
+    "display_name": "Crunchyroll",
+    "countries": [
+      "US", "CA", "GB", "IE", "AU", "NZ", "DE", "AT", "CH", "FR", "BE", "NL",
+      "LU", "IT", "ES", "PT", "SE", "NO", "DK", "FI", "IS", "PL", "CZ", "SK",
+      "HU", "RO", "BG", "HR", "SI", "EE", "LV", "LT", "GR", "CY", "MT", "JP",
+      "KR", "TW", "HK", "SG", "MY", "TH", "PH", "ID", "VN", "IN", "BR", "MX",
+      "AR", "CL", "CO", "PE", "UY", "PY", "BO", "EC", "VE", "CR", "PA", "GT",
+      "HN", "SV", "NI", "DO", "ZA", "TR", "IL", "AE", "SA", "KW", "QA", "BH",
+      "OM", "JO", "LB", "EG", "MA", "TN", "DZ", "LY", "SD", "ET", "KE", "UG",
+      "TZ", "RW", "BI", "DJ", "SO", "ER", "SS", "CF", "TD", "CM", "GQ", "GA",
+      "CG", "CD", "AO", "ZM", "MW", "MZ", "MG", "MU", "SC", "KM", "YT", "RE"
+    ]
+  },
+  "showtime": {
+    "name": "showtime",
+    "display_name": "Showtime",
+    "countries": ["US"]
+  },
+  "starz": {
+    "name": "starz",
+    "display_name": "Starz",
+    "countries": ["US", "CA"]
+  },
+  "espn-plus": {
+    "name": "espn-plus",
+    "display_name": "ESPN+",
+    "countries": ["US"]
+  },
+  "discovery-plus": {
+    "name": "discovery-plus",
+    "display_name": "Discovery+",
+    "countries": [
+      "US", "CA", "GB", "IE", "AU", "NZ", "DE", "AT", "CH", "FR", "BE", "NL",
+      "LU", "IT", "ES", "PT", "SE", "NO", "DK", "FI", "PL", "CZ", "SK", "HU",
+      "RO", "BG", "HR", "SI", "EE", "LV", "LT", "BR", "IN"
+    ]
+  },
+  "sky-go": {
+    "name": "sky-go",
+    "display_name": "Sky Go",
+    "countries": ["GB", "IE", "DE", "AT", "IT"]
+  },
+  "now-tv": {
+    "name": "now-tv",
+    "display_name": "NOW TV",
+    "countries": ["GB", "IE"]
+  },
+  "bbc-iplayer": {
+    "name": "bbc-iplayer",
+    "display_name": "BBC iPlayer",
+    "countries": ["GB"]
+  },
+  "itv-hub": {
+    "name": "itv-hub",
+    "display_name": "ITV Hub",
+    "countries": ["GB"]
+  },
+  "all4": {
+    "name": "all4",
+    "display_name": "All 4",
+    "countries": ["GB"]
+  },
+  "my5": {
+    "name": "my5",
+    "display_name": "My5",
+    "countries": ["GB"]
+  },
+  "canal-plus": {
+    "name": "canal-plus",
+    "display_name": "Canal+",
+    "countries": ["FR", "PL", "AF"]
+  },
+  "orange-tv": {
+    "name": "orange-tv",
+    "display_name": "Orange TV",
+    "countries": ["FR", "ES", "PL", "RO", "BE", "LU"]
+  },
+  "ard-mediathek": {
+    "name": "ard-mediathek",
+    "display_name": "ARD Mediathek",
+    "countries": ["DE", "AT", "CH"]
+  },
+  "zdf-mediathek": {
+    "name": "zdf-mediathek",
+    "display_name": "ZDF Mediathek",
+    "countries": ["DE", "AT", "CH"]
+  },
+  "rtl-plus": {
+    "name": "rtl-plus",
+    "display_name": "RTL+",
+    "countries": ["DE", "AT", "CH", "LU"]
+  },
+  "joyn": {
+    "name": "joyn",
+    "display_name": "Joyn",
+    "countries": ["DE", "AT", "CH"]
+  },
+  "magenta-tv": {
+    "name": "magenta-tv",
+    "display_name": "MagentaTV",
+    "countries": ["DE", "AT"]
+  },
+  "rai-play": {
+    "name": "rai-play",
+    "display_name": "Rai Play",
+    "countries": ["IT"]
+  },
+  "mediaset-infinity": {
+    "name": "mediaset-infinity",
+    "display_name": "Mediaset Infinity",
+    "countries": ["IT"]
+  },
+  "globo-play": {
+    "name": "globo-play",
+    "display_name": "Globo Play",
+    "countries": ["BR"]
+  },
+  "crave": {
+    "name": "crave",
+    "display_name": "Crave",
+    "countries": ["CA"]
+  },
+  "cbc-gem": {
+    "name": "cbc-gem",
+    "display_name": "CBC Gem",
+    "countries": ["CA"]
+  },
+  "stan": {
+    "name": "stan",
+    "display_name": "Stan",
+    "countries": ["AU"]
+  },
+  "binge": {
+    "name": "binge",
+    "display_name": "Binge",
+    "countries": ["AU"]
+  },
+  "kayo-sports": {
+    "name": "kayo-sports",
+    "display_name": "Kayo Sports",
+    "countries": ["AU"]
+  },
+  "neon": {
+    "name": "neon",
+    "display_name": "Neon",
+    "countries": ["NZ"]
+  },
+  "tvnz-ondemand": {
+    "name": "tvnz-ondemand",
+    "display_name": "TVNZ OnDemand",
+    "countries": ["NZ"]
+  },
+  "three-now": {
+    "name": "three-now",
+    "display_name": "ThreeNow",
+    "countries": ["NZ"]
+  },
+  "viaplay": {
+    "name": "viaplay",
+    "display_name": "Viaplay",
+    "countries": [
+      "SE", "NO", "DK", "FI", "IS", "EE", "LV", "LT", "PL", "NL", "GB"
+    ]
+  },
+  "tv4-play": {
+    "name": "tv4-play",
+    "display_name": "TV4 Play",
+    "countries": ["SE", "FI"]
+  },
+  "svt-play": {
+    "name": "svt-play",
+    "display_name": "SVT Play",
+    "countries": ["SE"]
+  },
+  "nrk-tv": {
+    "name": "nrk-tv",
+    "display_name": "NRK TV",
+    "countries": ["NO"]
+  },
+  "tv2-play": {
+    "name": "tv2-play",
+    "display_name": "TV2 Play",
+    "countries": ["NO", "DK"]
+  },
+  "dr-tv": {
+    "name": "dr-tv",
+    "display_name": "DR TV",
+    "countries": ["DK"]
+  },
+  "yle-areena": {
+    "name": "yle-areena",
+    "display_name": "Yle Areena",
+    "countries": ["FI"]
+  },
+  "ruutu": {
+    "name": "ruutu",
+    "display_name": "Ruutu",
+    "countries": ["FI"]
+  },
+  "player-pl": {
+    "name": "player-pl",
+    "display_name": "Player.pl",
+    "countries": ["PL"]
+  },
+  "tvp-vod": {
+    "name": "tvp-vod",
+    "display_name": "TVP VOD",
+    "countries": ["PL"]
+  },
+  "voyo": {
+    "name": "voyo",
+    "display_name": "Voyo",
+    "countries": ["CZ", "SK", "BG", "HR", "SI", "ME", "MK", "BA"]
+  },
+  "netflix-korea": {
+    "name": "netflix-korea",
+    "display_name": "Netflix Korea",
+    "countries": ["KR"]
+  },
+  "wavve": {
+    "name": "wavve",
+    "display_name": "Wavve",
+    "countries": ["KR"]
+  },
+  "tving": {
+    "name": "tving",
+    "display_name": "TVING",
+    "countries": ["KR"]
+  },
+  "abema": {
+    "name": "abema",
+    "display_name": "ABEMA",
+    "countries": ["JP"]
+  },
+  "u-next": {
+    "name": "u-next",
+    "display_name": "U-NEXT",
+    "countries": ["JP"]
+  },
+  "hulu-japan": {
+    "name": "hulu-japan",
+    "display_name": "Hulu Japan",
+    "countries": ["JP"]
+  },
+  "hotstar": {
+    "name": "hotstar",
+    "display_name": "Disney+ Hotstar",
+    "countries": ["IN", "ID", "MY", "TH", "PH", "VN", "SG"]
+  },
+  "zee5": {
+    "name": "zee5",
+    "display_name": "ZEE5",
+    "countries": ["IN", "BD", "PK", "LK", "NP", "BT", "MV"]
+  },
+  "sonyliv": {
+    "name": "sonyliv",
+    "display_name": "SonyLIV",
+    "countries": ["IN"]
+  },
+  "voot": {
+    "name": "voot",
+    "display_name": "Voot",
+    "countries": ["IN"]
+  },
+  "mx-player": {
+    "name": "mx-player",
+    "display_name": "MX Player",
+    "countries": ["IN"]
+  },
+  "iqiyi": {
+    "name": "iqiyi",
+    "display_name": "iQIYI",
+    "countries": ["CN", "SG", "MY", "TH", "ID", "PH", "VN", "KH", "LA", "MM"]
+  },
+  "youku": {
+    "name": "youku",
+    "display_name": "Youku",
+    "countries": ["CN"]
+  },
+  "tencent-video": {
+    "name": "tencent-video",
+    "display_name": "Tencent Video",
+    "countries": ["CN"]
+  }
+}
