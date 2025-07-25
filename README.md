@@ -36,6 +36,9 @@ cd excludarr
 # Install dependencies
 uv sync
 
+# Install excludarr in development mode
+uv pip install -e .
+
 # Run excludarr
 uv run excludarr --help
 ```
