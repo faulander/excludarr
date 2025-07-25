@@ -378,7 +378,32 @@ uv run pytest --cov=excludarr
 
 # Verbose output
 uv run pytest -v
+
+# Generate HTML coverage report
+uv run pytest --cov=excludarr --cov-report=html
 ```
+
+### Test Coverage
+
+Current test coverage: **62%** (811 missing out of 2159 total statements)
+
+**Core Modules Coverage:**
+- TMDB Client: **97%** - Primary API integration
+- Streaming Availability Client: **94%** - Secondary API fallback
+- Utelly Client: **94%** - Tertiary API fallback
+- Simple Cache: **94%** - Caching system
+- Models: **97%** - Configuration validation
+- Provider Manager: **76%** - Multi-provider coordination
+- Sync Engine: **79%** - Core sync logic
+- Sonarr Client: **65%** - Sonarr API integration
+- Providers: **76%** - Provider database management
+- Config: **71%** - Configuration management
+
+**Areas for improvement:**
+- CLI interface: **17%** (mostly integration testing needed)
+- Legacy modules: **0%** (availability.py, availability_old.py - to be removed)
+
+The core functionality has excellent test coverage, with the main API clients (TMDB, Streaming Availability, Utelly) and caching systems achieving >90% coverage.
 
 ### Contributing
 

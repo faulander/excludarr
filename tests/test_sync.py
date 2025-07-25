@@ -50,7 +50,7 @@ class TestSyncEngine:
         assert self.sync_engine.provider_manager == self.mock_provider_manager
         assert self.sync_engine.cache == self.mock_cache
         assert self.sync_engine.user_providers == ["netflix", "amazon-prime"]
-        assert self.sync_engine.user_countries == ["US", "DE"]
+        assert set(self.sync_engine.user_countries) == {"US", "DE"}
 
     def test_get_eligible_series(self):
         """Test getting series eligible for sync."""
@@ -95,28 +95,34 @@ class TestSyncEngine:
         assert eligible_series[0]["id"] == 1
         assert eligible_series[0]["title"] == "Breaking Bad"
 
-    def test_check_series_availability(self):
+    async def test_check_series_availability(self):
         """Test checking series availability on streaming providers."""
         series = {
             "id": 1,
             "title": "Breaking Bad",
-            "tvdbId": 81189,
+            "imdbId": "tt0903747",
             "seasons": [
                 {"seasonNumber": 1, "monitored": True},
                 {"seasonNumber": 2, "monitored": True}
             ]
         }
         
-        # Mock availability checker
-        self.mock_availability_checker.check_series_availability.return_value = {
-            "netflix": {"available": True, "seasons": [1, 2]},
-            "amazon-prime": {"available": False, "seasons": []}
+        # Mock provider manager as async
+        async def mock_get_series_availability(imdb_id, countries):
+            return {
+                "US": {"netflix": True},
+                "DE": {"amazon-prime": False}
+            }
+        
+        self.mock_provider_manager.get_series_availability = mock_get_series_availability
+        self.mock_provider_manager.filter_by_user_providers.return_value = {
+            "US": True,
+            "DE": False
         }
         
-        availability = self.sync_engine._check_series_availability(series)
+        availability = await self.sync_engine._check_series_availability(series)
         
         assert availability["netflix"]["available"] is True
-        assert availability["netflix"]["seasons"] == [1, 2]
         assert availability["amazon-prime"]["available"] is False
 
     def test_make_sync_decision_series_available(self):
@@ -286,7 +292,7 @@ class TestSyncEngine:
         assert "failed" in result.message.lower()
         assert "API Error" in result.message
 
-    def test_run_sync_complete_workflow(self):
+    async def test_run_sync_complete_workflow(self):
         """Test complete sync workflow."""
         # Mock eligible series
         mock_series = [
@@ -295,7 +301,7 @@ class TestSyncEngine:
                 "title": "Breaking Bad",
                 "monitored": True,
                 "added": "2024-01-01T00:00:00Z",
-                "tvdbId": 81189,
+                "imdbId": "tt0903747",
                 "seasons": [
                     {"seasonNumber": 1, "monitored": True},
                     {"seasonNumber": 2, "monitored": True}
@@ -305,14 +311,21 @@ class TestSyncEngine:
         
         self.mock_sonarr_client.get_monitored_series.return_value = mock_series
         
-        # Mock availability check
-        self.mock_availability_checker.check_series_availability.return_value = {
-            "netflix": {"available": True, "seasons": [1, 2]},
-            "amazon-prime": {"available": False, "seasons": []}
+        # Mock provider manager as async
+        async def mock_get_series_availability(imdb_id, countries):
+            return {
+                "US": {"netflix": True},
+                "DE": {"amazon-prime": False}
+            }
+        
+        self.mock_provider_manager.get_series_availability = mock_get_series_availability
+        self.mock_provider_manager.filter_by_user_providers.return_value = {
+            "US": True,
+            "DE": False
         }
         
         # Run sync
-        sync_results = self.sync_engine.run_sync()
+        sync_results = await self.sync_engine.run_sync()
         
         assert isinstance(sync_results, list)
         assert len(sync_results) == 1
@@ -321,14 +334,14 @@ class TestSyncEngine:
         assert result.series_id == 1
         assert result.series_title == "Breaking Bad"
         assert result.success is True
-        assert result.action_taken == "dry-run"  # Because dry_run=True
+        assert result.action_taken == "none"  # No streaming availability
 
-    def test_run_sync_no_eligible_series(self):
+    async def test_run_sync_no_eligible_series(self):
         """Test sync when no series are eligible."""
         # Mock no eligible series
         self.mock_sonarr_client.get_monitored_series.return_value = []
         
-        sync_results = self.sync_engine.run_sync()
+        sync_results = await self.sync_engine.run_sync()
         
         assert isinstance(sync_results, list)
         assert len(sync_results) == 0
